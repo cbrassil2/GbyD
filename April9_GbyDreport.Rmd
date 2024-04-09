@@ -204,9 +204,69 @@ for (i in keptCols) {
 # use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel@nebrwesleyan.edu")
 ```
 
+```{r, results='asis', echo=FALSE}
+# Aggregate columns that violate privacy concerns, removed from output
+keptColsInt <- c()
+droppedColsInt <- c()
+
+for (i in combn(demographicCols,2,simplify=FALSE)) {
+
+    countsInt <- d1 %>%
+    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
+    summarize(students=n(), .groups = "drop" )
+  
+  if(any(countsInt$students < threshold)) {
+    droppedColsInt <- c(droppedColsInt, i)
+  }
+  else {
+    keptColsInt <- c(keptColsInt, i)
+  }
+}
+
+if (length(droppedColsInt) != 0) {
+  cat("Aggregated Columns:",droppedColsInt)
+}
+```
+
+
+
 ## DFW Rate Intersectionality Tables for `r d1$course[1]`
 
-```{r, results = 'asis', echo=FALSE}
+```{r, results = 'asis', echo=FALSE, include=FALSE}
+
+for (i in keptColsInt) {
+  
+d1 %>%
+    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
+    summarize(students=n(), .groups = "drop" ) %>%
+    pivot_wider(names_from = c(!!i[1],!!i[2]), values_from=students) %>%
+    mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course"))), demCat = " ") %>%
+    relocate(Gap, .after = "course") %>%
+    relocate(demCat, .after = "Gap") %>%
+    select(-course) -> numStudentsInt
+
+  d1 %>%
+    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
+    summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
+    pivot_wider(names_from = c(!!i[1],!!i[2]), values_from=DFW) %>%
+    mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
+    relocate(Gap, .after = "course") %>%
+    select(-course) %>%
+    mutate(demCat = paste(!!i[1], "&", !!i[2]) ) %>%
+    rbind(numStudentsInt) %>%
+    gt(rowname_col="demCat") %>%
+    fmt_percent( 
+    decimals = 1, rows=1
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Gap)) %>%
+  tab_spanner_delim(delim="_") %>%
+    print()
+}
+```
+
+```{r, results = 'asis', echo=FALSE, include=FALSE}
 
 for (i in combn(keptCols,2,simplify=FALSE)) {
   
