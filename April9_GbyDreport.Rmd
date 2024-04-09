@@ -1,7 +1,7 @@
 ---
 title: "HHMI Mini-Project Visualization Example"
 author: "Chad E. Brassil, Faculty Director of Undergraduate Analytics"
-date: "December 2023, edited 4/2/24"
+date: "December 2023, edited 4/9/24"
 output: html_document
 ---
 
@@ -151,12 +151,13 @@ for (i in keptCols) {
 }
 ```
 
+## Intersectionality Tables
 
-```{r, include=FALSE}
-# To do List:
-# Replace small groups with aggregated
-# Title becomes course name, row name is demographic category
-# GitHub push
+```{r}
+library(usethis)
+use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel@nebrwesleyan.edu")
+
+
 ```
 
 
