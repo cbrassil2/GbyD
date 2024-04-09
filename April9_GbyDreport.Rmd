@@ -106,26 +106,41 @@ ds %>%
 ```{r, include = FALSE}
 # Isolates one course as d1
 # Change input course here to generate differing reports (Chem1 or Calc1):
-inputCourse <- "Chem1"
+inputCourse <- "Calc1"
 dt %>%
   filter(course == as.character(inputCourse)) -> d1
 
 ```
+
+```{r, include=FALSE}
+# To Do:
+# Aggregated groups
+# &
+# Number of Students
+```
+
 
 ```{r, results='asis', echo=FALSE}
 # Threshold Number of Students or Fewer Check for Privacy
 threshold <- 10
 # Aggregate columns that violate privacy concerns, removed from output
 keptCols <- c()
+droppedCols <- c()
 
 for (i in demographicCols) {
   counts <- d1 %>%
   count(!!sym(i))
   
-  if(any(counts$n < threshold)) { }
+  if(any(counts$n < threshold)) {
+    droppedCols <- c(droppedCols, i)
+  }
   else {
     keptCols <- c(keptCols, i)
   }
+}
+
+if (length(droppedCols) != 0) {
+  cat("Aggregated Columns:",droppedCols)
 }
 ```
 
@@ -172,7 +187,7 @@ d1 %>%
     relocate(Gap, .after = "course") %>%
     ungroup() %>%
     select(-course) %>%
-    mutate(demCat = paste(!!i[1], !!i[2]) ) %>%
+    mutate(demCat = paste(!!i[1], "&", !!i[2]) ) %>%
     gt(rowname_col="demCat") %>%
     fmt_percent( 
     decimals = 1
