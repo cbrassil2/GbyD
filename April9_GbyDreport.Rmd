@@ -106,7 +106,7 @@ ds %>%
 ```{r, include = FALSE}
 # Isolates one course as d1
 # Change input course here to generate differing reports (Chem1 or Calc1):
-inputCourse <- "Calc1"
+inputCourse <- "Chem1"
 dt %>%
   filter(course == as.character(inputCourse)) -> d1
 
@@ -146,12 +146,12 @@ if (length(droppedCols) != 0) {
 
 ## DFW Rate by Demographic Category for `r d1$course[1]`
 
-```{r, results='asis', echo=FALSE}
+```{r, results='asis', echo=FALSE, include=FALSE}
 # Generate a table for each demographic category included
 for (i in keptCols) {
   d1 %>%
   group_by(course, !!sym(i)) %>%
-  summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
+  summarize(DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
   pivot_wider(names_from = !!i, values_from=DFW) %>%
   mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
   relocate(Gap, .after = "course") %>%
@@ -162,6 +162,37 @@ for (i in keptCols) {
   fmt_percent(decimals = 1) %>%
   tab_style(style = cell_text(weight = "bold"),
             locations = cells_body(columns = c(Gap))) %>%
+  print()
+}
+```
+
+
+```{r, results='asis', echo=FALSE, include=TRUE}
+# Generate a table for each demographic category included
+for (i in keptCols) {
+  d1 %>%
+  group_by(course, !!sym(i)) %>%
+  summarize(students=n(), .groups = "drop" ) %>%
+  pivot_wider(names_from = !!i, values_from=students) %>%
+  mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course"))), demCat = " ") %>%
+  relocate(Gap, .after = "course") %>%
+  relocate(demCat, .after = "Gap") %>%
+  select(-course) -> numStudents
+  
+  d1 %>%
+  group_by(course, !!sym(i)) %>%
+  summarize(DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
+  pivot_wider(names_from = !!i, values_from=DFW) %>%
+  mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
+  relocate(Gap, .after = "course") %>%
+  select(-course) %>%
+  mutate(demCat = i) %>% 
+  relocate(demCat, .after = "Gap") %>% 
+  rbind(numStudents) %>%
+  gt(rowname_col="demCat") %>%
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_body(columns = c(Gap))) %>%
+  fmt_percent(decimals = 1, rows = 1) %>%
   print()
 }
 ```
