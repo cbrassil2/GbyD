@@ -151,13 +151,38 @@ for (i in keptCols) {
 }
 ```
 
-## Intersectionality Tables
 
-```{r}
-library(usethis)
-use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel@nebrwesleyan.edu")
+```{r, include=FALSE}
+# Pair with GitHub
+# library(usethis)
+# use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel@nebrwesleyan.edu")
+```
 
+## DFW Rate Intersectionality Tables for `r d1$course[1]`
 
+```{r, results = 'asis', echo=FALSE}
+
+for (i in combn(keptCols,2,simplify=FALSE)) {
+  
+d1 %>%
+    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
+    summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
+    pivot_wider(names_from = c(!!i[1],!!i[2]), values_from=DFW) %>%
+    mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
+    relocate(Gap, .after = "course") %>%
+    ungroup() %>%
+    select(-course) %>%
+    mutate(demCat = paste(!!i[1], !!i[2]) ) %>%
+    gt(rowname_col="demCat") %>%
+    fmt_percent( 
+    decimals = 1
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Gap)) %>%
+  tab_spanner_delim(delim="_") %>%
+    print()
+}
 ```
 
 
