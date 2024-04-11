@@ -120,9 +120,15 @@ dt %>%
 
 ```{r, include=FALSE}
 # To Do:
-# Aggregated groups
-# &
-# Number of Students
+# Remove Gap number Total
+# Add note about students
+# Removed columns formatting with commas and &
+
+# Factors, forcats categories, change data type, orders of categories
+# reduce transparency
+# move tables to be near vizzes
+# reduce size of vizzes in {r}
+# add mouse over
 ```
 
 ```{r, results='asis', echo=FALSE}
@@ -145,11 +151,12 @@ for (i in demographicCols) {
 }
 
 if (length(droppedCols) != 0) {
-  cat("Aggregated Columns:",droppedCols)
+  cat("Removed for privacy:",droppedCols)
 }
 ```
 
 ## DFW Rate by Demographic Category for `r d1$course[1]`
+#### The number of students in each category is listed under the percentage.
 
 ```{r, results='asis', echo=FALSE, include=FALSE}
 # Generate a table for each demographic category included
@@ -179,7 +186,7 @@ for (i in keptCols) {
   group_by(course, !!sym(i)) %>%
   summarize(students=n(), .groups = "drop" ) %>%
   pivot_wider(names_from = !!i, values_from=students) %>%
-  mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course"))), demCat = " ") %>%
+  mutate(Gap = " ", demCat = " ") %>%
   relocate(Gap, .after = "course") %>%
   relocate(demCat, .after = "Gap") %>%
   select(-course) -> numStudents
@@ -189,6 +196,9 @@ for (i in keptCols) {
   summarize(DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
   pivot_wider(names_from = !!i, values_from=DFW) %>%
   mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
+  mutate(Gap = format(round(Gap * 100, digits = 1), nsmall = 1)) %>%
+  mutate(Gap = as.character(Gap)) %>%
+  mutate(Gap = paste0(Gap,'%')) %>%
   relocate(Gap, .after = "course") %>%
   select(-course) %>%
   mutate(demCat = i) %>% 
@@ -205,6 +215,7 @@ for (i in keptCols) {
 <br><br><br><br><br>
 
 ## DFW Rate Intersectionality Tables for `r d1$course[1]`
+#### The number of students in each category is listed under the percentage.
 
 ```{r, results='asis', echo=FALSE}
 # Aggregate columns that violate privacy concerns, removed from output
@@ -226,7 +237,17 @@ for (i in combn(demographicCols,2,simplify=FALSE)) {
 }
 
 if (length(droppedColsInt) != 0) {
-  cat("Aggregated Columns:",droppedColsInt)
+  formattedPairs <- ""
+  for (j in seq(1, length(droppedColsInt), by = 2)) {
+    formattedPairs <- paste(formattedPairs, droppedColsInt[j], sep = "")
+    if (j + 1 <= length(droppedColsInt)) {
+      formattedPairs <- paste(formattedPairs, " & ", droppedColsInt[j + 1], sep = "")
+    }
+    formattedPairs <- paste(formattedPairs, ", ", sep = "")
+  }
+  formattedPairs <- sub(", $", "", formattedPairs)
+  
+  cat("Removed for privacy:", formattedPairs)
 }
 ```
 
@@ -239,7 +260,7 @@ d1 %>%
     group_by(course, !!sym(pair[1]), !!sym(pair[2])) %>%
     summarize(students=n(), .groups = "drop" ) %>%
     pivot_wider(names_from = c(!!sym(pair[1]), !!sym(pair[2])), values_from=students) %>%
-    mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course"))), demCat = " ") %>%
+    mutate(Gap = " ", demCat = " ") %>%
     relocate(Gap, .after = "course") %>%
     relocate(demCat, .after = "Gap") %>%
     select(-course) -> numStudentsInt
@@ -249,6 +270,9 @@ d1 %>%
     summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
     pivot_wider(names_from = c(!!pair[1],!!pair[2]), values_from=DFW) %>%
     mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
+    mutate(Gap = format(round(Gap * 100, digits = 1), nsmall = 1)) %>%
+    mutate(Gap = as.character(Gap)) %>%
+    mutate(Gap = paste0(Gap,'%')) %>%
     relocate(Gap, .after = "course") %>%
     select(-course) %>%
     mutate(demCat = paste(!!pair[1], "&", !!pair[2]) ) %>%
@@ -287,6 +311,30 @@ d1 %>%
     locations = cells_body(columns = Gap)) %>%
   tab_spanner_delim(delim="_") %>%
     print()
+}
+```
+
+<br><br><br><br><br>
+
+## DFW Rate Visualizations for `r d1$course[1]`
+
+```{r, echo=FALSE, include=TRUE}
+for (i in keptCols) { 
+d1 %>%
+  group_by(course, !!sym(i)) %>%
+  summarize( DFW = sum(ABCDFW == "DFW")/n(), students = n(), .groups = "drop" ) %>%
+  group_by(course) %>%
+  mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) %>%
+  ggplot(aes(x = DFW, y = course, fill = !!sym(i))) +
+  theme_classic() +
+  geom_segment(aes(x = DFW_min, xend = DFW_max, yend=course),colour = "gray", linewidth = 15) +
+  scale_size(range = c(5,15), guide = "none") + #use range to set min and max size of circles
+  geom_point(aes(size = students),shape = 21) +
+  scale_x_continuous(labels = scales::percent, limits = c(0,1)) +
+  guides(fill = guide_legend(override.aes = list(size = 10))) +
+  labs(fill = sym(i), y = "Course") +
+  ggtitle(paste(i, "DFW Rates")) -> plot
+print(plot)
 }
 ```
 
@@ -362,7 +410,7 @@ dt %>%
 <p>&nbsp;</p>
 
 
-```{r, include=FALSE}
+```{r, echo=FALSE, include=FALSE}
 ## Create Figures
 #This illustrates how we are going to rearrange the data to prepare it for plotting
 dt %>%
@@ -374,7 +422,7 @@ dt %>%
 ```
 
 
-```{r, include=FALSE}
+```{r, echo=FALSE, include=FALSE}
 #Dress it up into plot
 dt %>%
   group_by(course,firstgen) %>%
