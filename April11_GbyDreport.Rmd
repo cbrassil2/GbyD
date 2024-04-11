@@ -19,6 +19,12 @@ knitr::opts_chunk$set(echo = TRUE) #used to display code in html
 }
 ```
 
+```{r, include=FALSE}
+# Pair with GitHub
+# library(usethis)
+# use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel2@unl.edu")
+```
+
 ```{r libraries, include=FALSE, message = FALSE}
 #Load libraries and data
 
@@ -119,10 +125,9 @@ dt %>%
 # Number of Students
 ```
 
-
 ```{r, results='asis', echo=FALSE}
 # Threshold Number of Students or Fewer Check for Privacy
-threshold <- 10
+threshold <- 5
 # Aggregate columns that violate privacy concerns, removed from output
 keptCols <- c()
 droppedCols <- c()
@@ -197,12 +202,9 @@ for (i in keptCols) {
 }
 ```
 
+<br><br><br><br><br>
 
-```{r, include=FALSE}
-# Pair with GitHub
-# library(usethis)
-# use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel@nebrwesleyan.edu")
-```
+## DFW Rate Intersectionality Tables for `r d1$course[1]`
 
 ```{r, results='asis', echo=FALSE}
 # Aggregate columns that violate privacy concerns, removed from output
@@ -228,31 +230,28 @@ if (length(droppedColsInt) != 0) {
 }
 ```
 
+```{r, results = 'asis', echo=FALSE, include=TRUE}
 
+for (i in seq(from = 1, to = length(keptColsInt), by=2)) {
+  pair <- c(keptColsInt[i], keptColsInt[i+1]) 
 
-## DFW Rate Intersectionality Tables for `r d1$course[1]`
-
-```{r, results = 'asis', echo=FALSE, include=FALSE}
-
-for (i in keptColsInt) {
-  
 d1 %>%
-    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
+    group_by(course, !!sym(pair[1]), !!sym(pair[2])) %>%
     summarize(students=n(), .groups = "drop" ) %>%
-    pivot_wider(names_from = c(!!i[1],!!i[2]), values_from=students) %>%
+    pivot_wider(names_from = c(!!sym(pair[1]), !!sym(pair[2])), values_from=students) %>%
     mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course"))), demCat = " ") %>%
     relocate(Gap, .after = "course") %>%
     relocate(demCat, .after = "Gap") %>%
     select(-course) -> numStudentsInt
 
   d1 %>%
-    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
+    group_by(course,!!sym(pair[1]),!!sym(pair[2])) %>%
     summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
-    pivot_wider(names_from = c(!!i[1],!!i[2]), values_from=DFW) %>%
+    pivot_wider(names_from = c(!!pair[1],!!pair[2]), values_from=DFW) %>%
     mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
     relocate(Gap, .after = "course") %>%
     select(-course) %>%
-    mutate(demCat = paste(!!i[1], "&", !!i[2]) ) %>%
+    mutate(demCat = paste(!!pair[1], "&", !!pair[2]) ) %>%
     rbind(numStudentsInt) %>%
     gt(rowname_col="demCat") %>%
     fmt_percent( 
