@@ -123,11 +123,12 @@ dt %>%
 # Remove Gap number Total
 # Add note about students
 # Removed columns formatting with commas and &
+# reduce size of vizzes in {r}
+# Max vizzes at 60% if Max is less than 50%
 
 # Factors, forcats categories, change data type, orders of categories
 # reduce transparency
 # move tables to be near vizzes
-# reduce size of vizzes in {r}
 # add mouse over
 ```
 
@@ -318,19 +319,36 @@ d1 %>%
 
 ## DFW Rate Visualizations for `r d1$course[1]`
 
-```{r, echo=FALSE, include=TRUE}
+```{r, echo=FALSE, include=TRUE, fig.height=4}
+
 for (i in keptCols) { 
 d1 %>%
   group_by(course, !!sym(i)) %>%
   summarize( DFW = sum(ABCDFW == "DFW")/n(), students = n(), .groups = "drop" ) %>%
   group_by(course) %>%
-  mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) %>%
-  ggplot(aes(x = DFW, y = course, fill = !!sym(i))) +
+  mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) -> b4maxCheck
+  
+  
+if (b4maxCheck$DFW_max[1] > 0.5) {
+  upperLimit <- b4maxCheck$DFW_max[1] + 0.1 }
+else { upperLimit <- 0.5 }
+  
+  b4maxCheck %>%
+  arrange(desc(students)) -> sorted_d1
+  
+  sorted_d1 %>%
+    pull(!!sym(i)) -> cat_sorted
+    
+  sorted_d1 %>%
+  mutate(cat_factors = factor(!!sym(i), levels = cat_sorted)) %>% 
+    
+  
+  ggplot(aes(x = DFW, y = course, fill = cat_factors)) +
   theme_classic() +
   geom_segment(aes(x = DFW_min, xend = DFW_max, yend=course),colour = "gray", linewidth = 15) +
   scale_size(range = c(5,15), guide = "none") + #use range to set min and max size of circles
   geom_point(aes(size = students),shape = 21) +
-  scale_x_continuous(labels = scales::percent, limits = c(0,1)) +
+  scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
   guides(fill = guide_legend(override.aes = list(size = 10))) +
   labs(fill = sym(i), y = "Course") +
   ggtitle(paste(i, "DFW Rates")) -> plot
@@ -421,6 +439,29 @@ dt %>%
   mutate(firstgen = if_else(firstgen == "Y", "FirstGen", "Continuing"))
 ```
 
+```{r, echo=FALSE, include=FALSE}
+#Using Factors
+d1 %>%
+  group_by(course,race_ethnicity) %>%
+  summarize( DFW = sum(ABCDFW == "DFW")/n(), students = n(), .groups = "drop" ) %>%
+  group_by(course) %>%
+  mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) %>%
+  arrange(desc(students)) -> sorted_d1
+
+sorted_d1 %>%
+  pull(race_ethnicity) -> cat_sorted
+
+sorted_d1 %>%
+  mutate(race_ethnicity = factor(race_ethnicity, levels = cat_sorted)) %>%
+  ggplot(aes(x = DFW, y = course, fill = race_ethnicity)) + #plotting code starts here
+  theme_classic() +
+  geom_segment(aes(x = DFW_min, xend = DFW_max, yend=course),colour = "gray", linewidth = 15) +
+  scale_size(range = c(5,15), guide = "none") + #use range to set min and max size of circles
+  geom_point(aes(size = students),shape = 21) +
+  scale_x_continuous(labels = scales::percent, limits = c(0,1)) +
+  guides(fill = guide_legend(override.aes = list(size = 10))) +
+  labs(fill = "race_ethnicity", y = "Course")
+```
 
 ```{r, echo=FALSE, include=FALSE}
 #Dress it up into plot
