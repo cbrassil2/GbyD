@@ -18,7 +18,7 @@ The code expects columns which provide demographic information with four excepti
 1. The name of the course which can be called "course", "Course", "class", or "Class"
 2. The course term which can be called "term", "Term", "AMIS", or "Amis_Term_Code"
 3. The grade given which must be called "grade", "Grade", "Letter_Grade", or "letter_grade"
-4. The semester of the course which must be called "semester", "Semester", "year_and_semester" or "Year_and_semester"
+4. The semester of the course which must be called "semester", "Semester", "year_and_semester" or "Year_and_Semester"
 
 The columns for course and grade are required for the report to generate correctly!
 
