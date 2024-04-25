@@ -13,9 +13,6 @@ output:
 ```
 
 ```{r, include=FALSE}
-# Pair with GitHub
-#library(usethis)
-#use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel2@unl.edu")
 # Installs required packages if they are not already installed
 if (!require("tidyverse")) install.packages("tidyverse")
 if (!require("gt")) install.packages("gt")
