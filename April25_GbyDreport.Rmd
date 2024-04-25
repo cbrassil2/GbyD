@@ -6,14 +6,6 @@ output:
   rmdformats::readthedown
 ---
 
-```{r setup, include=FALSE}
-# This is example code designed to work with the simulated data. It can be reused and modified to work with local data from an institution.
-## Setup
-# You can use the Knit feature to generate an html file or a pdf file from this document, which can then be shared with others.
-
-knitr::opts_chunk$set(echo = TRUE) #used to display code in html
-```
-
 ```{css, echo=FALSE}
 .gt_table {
   float:left;
@@ -22,8 +14,13 @@ knitr::opts_chunk$set(echo = TRUE) #used to display code in html
 
 ```{r, include=FALSE}
 # Pair with GitHub
-library(usethis)
-use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel2@unl.edu")
+#library(usethis)
+#use_git_config(user.name = "Tim Gabriel", user.email = "tgabriel2@unl.edu")
+# Installs required packages if they are not already installed
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("gt")) install.packages("gt")
+if (!require("ggiraph")) install.packages("ggiraph")
+if (!require("scales")) install.packages("scales")
 ```
 
 ```{r libraries, include=FALSE, message = FALSE}
@@ -35,6 +32,8 @@ library(tidyverse)
 library(gt)
 ds <- read_csv("data_sim.csv")
 ```
+
+
 
 ```{r, include=FALSE}
 # Add acceptable column names here:
@@ -113,7 +112,7 @@ ds %>%
 ```{r, include = FALSE}
 # Isolates one course as d1
 # Change input course here to generate differing reports (Chem1 or Calc1):
-inputCourse <- "Chem1"
+inputCourse <- "Calc1"
 dt %>%
   filter(course == as.character(inputCourse)) -> d1
 
@@ -121,7 +120,7 @@ dt %>%
 
 
 ```{r, results='asis', echo=FALSE}
-# Threshold Number of Students or Fewer Check for Privacy
+# Threshold Number of Students or Fewer Check for Privacy - Change threshold value here:
 threshold <- 5
 # Aggregate columns that violate privacy concerns, removed from output
 keptCols <- c()
@@ -140,11 +139,12 @@ for (i in demographicCols) {
 }
 
 if (length(droppedCols) != 0) {
+  #Prints names of removed columns
   cat("Removed for privacy:",droppedCols)
 }
 ```
 
-## DFW Rate by Demographic Category for `r d1$course[1]`
+# DFW Rates for `r d1$course[1]`
 #### The number of students in each category is listed under the percentage.
 
 ```{r, results='asis', echo=FALSE, include=TRUE}
@@ -157,12 +157,13 @@ for (i in keptCols) {
   mutate(Gap = " ", demCat = " ") %>%
   relocate(Gap, .after = "course") %>%
   relocate(demCat, .after = "Gap") %>%
-  select(-course) -> numStudents
+  select(-course) -> numStudents # Generates a row with the number of students in each category
   
-  d1 %>%
+d1 %>%
   group_by(course, !!sym(i)) %>%
   summarize(DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
   pivot_wider(names_from = !!i, values_from=DFW) %>%
+  # Calculates gap percentage and then converts to character type
   mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
   mutate(Gap = format(round(Gap * 100, digits = 1), nsmall = 1)) %>%
   mutate(Gap = as.character(Gap)) %>%
@@ -171,25 +172,79 @@ for (i in keptCols) {
   select(-course) %>%
   mutate(demCat = i) %>% 
   relocate(demCat, .after = "Gap") %>% 
+  #Row binds numStudents, the number of students in each category
   rbind(numStudents) %>%
+  # Table creation starts here
   gt(rowname_col="demCat") %>%
   tab_style(style = cell_text(weight = "bold"),
             locations = cells_body(columns = c(Gap))) %>%
-  fmt_percent(decimals = 1, rows = 1) %>%
-  print()
+  fmt_percent(decimals = 1, rows = 1) -> table
+
+# Code to generate the interactive visualization to go with each table
+d1 %>%
+  group_by(course, !!sym(i)) %>%
+  summarize( DFW = sum(ABCDFW == "DFW")/n(), students = n(), DFW_students=sum(ABCDFW == "DFW"), .groups = "drop" ) %>%
+  group_by(course) %>%
+  mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) %>%
+  
+  
+  # Sets scale of x-axis to 50% or highest Max + 10%
+  mutate(students_in_gap = students[which.max(DFW)]*(max(DFW)-min(DFW)), diversity = students/sum(students), total_enrollment =      sum(students) ) -> b4maxCheck
+if (b4maxCheck$DFW_max[1] > 0.5) {
+  upperLimit <- b4maxCheck$DFW_max[1] + 0.1 
+} else {
+    upperLimit <- 0.5
+    }
+
+# sorts by number of students in each category for factoring purposes
+  b4maxCheck %>%
+  arrange(desc(students)) -> sorted_d1
+  sorted_d1 %>%
+    pull(!!sym(i)) -> cat_sorted
+  sorted_d1 %>%
+  mutate(cat_factors = factor(!!sym(i), levels = cat_sorted)) %>%
+    
+# Interactive plotting code starts here:
+  ggplot(aes(x = DFW, y = course, fill = cat_factors)) +
+  theme_classic() +
+  geom_segment_interactive(aes(x = DFW_min, xend = DFW_max, yend=course, tooltip = paste(
+    course,"\r",
+    !!sym(i),"\r",
+    "Percentage Points Gap:",percent(DFW_max - DFW_min, accuracy = 0.1),"\r",
+    "Grade Ratio:",round(DFW_max/DFW_min, digits = 2),"\r",
+    "Students in Gap:",round(students_in_gap, digits = 1),"\r",
+    "Total Enrollments:",total_enrollment,"\r"
+    )), colour = "gray", linewidth = 15) +
+  scale_size(range = c(5,15), guide = "none") +
+  geom_point_interactive(aes(size = students, tooltip = paste0(
+    course,"\r",
+    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of students)\r",
+    DFW_students," of ",students," enrollments\r",
+    percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
+  scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
+  guides(fill = guide_legend(override.aes = list(size = 10), title="")) +
+  labs(fill = sym(i), y = "") -> plot
+  
+# Title created in markdown
+cat('\n##', i , '\n')
+
+print(htmltools::tagList(girafe(ggobj = plot))) # Use htmltools::tagList() to generate multiple interactive plots
+                                                # results = 'asis' must go in {}
+print(table)
 }
 ```
 
 <br><br><br><br><br>
 
-## DFW Rate Intersectionality Tables for `r d1$course[1]`
+# Intersectionality Data for `r d1$course[1]`
 #### The number of students in each category is listed under the percentage.
 
-```{r, results='asis', echo=FALSE}
+```{r, results='asis', echo=FALSE, warning=FALSE}
 # Aggregate columns that violate privacy concerns, removed from output
 keptColsInt <- c()
 droppedColsInt <- c()
 
+# Loops through all combinations of demographic columns
 for (i in combn(demographicCols,2,simplify=FALSE)) {
 
     countsInt <- d1 %>%
@@ -205,6 +260,7 @@ for (i in combn(demographicCols,2,simplify=FALSE)) {
 }
 
 if (length(droppedColsInt) != 0) {
+  #Formats dropped columns to look nice in the report
   formattedPairs <- ""
   for (j in seq(1, length(droppedColsInt), by = 2)) {
     formattedPairs <- paste(formattedPairs, droppedColsInt[j], sep = "")
@@ -219,9 +275,10 @@ if (length(droppedColsInt) != 0) {
 }
 ```
 
-```{r, results = 'asis', echo=FALSE, include=TRUE}
-
+```{r, results = 'asis', echo=FALSE, include=TRUE, warning = FALSE}
+# Loops through all possible pairs of columns that have passed the privacy check
 for (i in seq(from = 1, to = length(keptColsInt), by=2)) {
+  # One pair of categories to work with:
   pair <- c(keptColsInt[i], keptColsInt[i+1]) 
 
 d1 %>%
@@ -231,20 +288,25 @@ d1 %>%
     mutate(Gap = " ", demCat = " ") %>%
     relocate(Gap, .after = "course") %>%
     relocate(demCat, .after = "Gap") %>%
-    select(-course) -> numStudentsInt
+    select(-course) -> numStudentsInt   # Creates the row with number of students in each category to use later
 
   d1 %>%
     group_by(course,!!sym(pair[1]),!!sym(pair[2])) %>%
     summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
     pivot_wider(names_from = c(!!pair[1],!!pair[2]), values_from=DFW) %>%
+    # Calculates the gap percentage and converts it to character type
     mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
     mutate(Gap = format(round(Gap * 100, digits = 1), nsmall = 1)) %>%
     mutate(Gap = as.character(Gap)) %>%
     mutate(Gap = paste0(Gap,'%')) %>%
     relocate(Gap, .after = "course") %>%
     select(-course) %>%
-    mutate(demCat = paste(!!pair[1], "&", !!pair[2]) ) %>%
-    rbind(numStudentsInt) %>%
+    mutate(demCat = paste(!!pair[1], "&", !!pair[2]) ) -> titlePull  # pulls the title to use later
+  
+  titlePull %>%
+    rbind(numStudentsInt) %>%    # adds in row with number of students in each category
+    
+    #Table creation starts here:
     gt(rowname_col="demCat") %>%
     fmt_percent( 
     decimals = 1, rows=1
@@ -252,47 +314,108 @@ d1 %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(columns = Gap)) %>%
-  tab_spanner_delim(delim="_") %>%
-    print()
-}
-```
-
-```{r, results = 'asis', echo=FALSE, include=FALSE}
-
-for (i in combn(keptCols,2,simplify=FALSE)) {
+  tab_spanner_delim(delim="_") -> table
   
+#Code for interactive visualization starts here
+  pair <- c(keptColsInt[i], keptColsInt[i+1]) 
+  #Pulls title to use later
+  pairTitle <- paste(keptColsInt[i],"&",keptColsInt[i+1])
 d1 %>%
-    group_by(course,!!sym(i[1]),!!sym(i[2])) %>%
-    summarize( DFW = sum(ABCDFW == "DFW")/n(), .groups = "drop" ) %>%
-    pivot_wider(names_from = c(!!i[1],!!i[2]), values_from=DFW) %>%
-    mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
-    relocate(Gap, .after = "course") %>%
-    ungroup() %>%
-    select(-course) %>%
-    mutate(demCat = paste(!!i[1], "&", !!i[2]) ) %>%
-    gt(rowname_col="demCat") %>%
-    fmt_percent( 
-    decimals = 1
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = Gap)) %>%
-  tab_spanner_delim(delim="_") %>%
-    print()
+    group_by(course, !!sym(pair[1]), !!sym(pair[2])) %>%
+    summarize(DFW = sum(ABCDFW == "DFW")/n(), students=n(), DFW_students=sum(ABCDFW == "DFW"), .groups = "drop" ) %>%
+    mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) %>%
+  #Creates labels for each category of intersection
+    mutate(intersection = paste(!!sym(pair[1]),!!sym(pair[2]), sep = "-")) %>%
+  mutate(students_in_gap = students[which.max(DFW)]*(max(DFW)-min(DFW)), diversity = students/sum(students), total_enrollment =      sum(students) ) -> b4maxCheck
+# Sets scale of x-axis to 50% or highest Max + 10%
+if (b4maxCheck$DFW_max[1] > 0.5) {
+  upperLimit <- b4maxCheck$DFW_max[1] + 0.1 
+  } else { 
+  upperLimit <- 0.5 
+  }
+# sorts by number of students in each category for factoring purposes
+  b4maxCheck %>%
+  arrange(desc(students)) -> sorted_d1
+sorted_d1 %>%
+    pull(intersection) -> cat_sorted
+  sorted_d1 %>%
+  mutate(cat_factors = factor(intersection, levels = cat_sorted)) %>%
+#Plotting code starts here:
+  ggplot(aes(x = DFW, y = course, size = students, fill = intersection)) + 
+  theme_classic() +
+      geom_segment_interactive(aes(x = DFW_min, xend = DFW_max, yend=course, tooltip = paste(
+    course,"\r",
+    intersection,"\r",
+    "Percentage Points Gap:",percent(DFW_max - DFW_min, accuracy = 0.1),"\r",
+    "Grade Ratio:",round(DFW_max/DFW_min, digits = 2),"\r",
+    "Students in Gap:",round(students_in_gap, digits = 1),"\r",
+    "Total Enrollments:",total_enrollment,"\r"
+    )), colour = "gray", linewidth = 15) +
+  scale_size(range = c(5,15), guide = "none") +
+  geom_point_interactive(aes(size = students, tooltip = paste0(
+    course,"\r",
+    intersection," (",percent(diversity,accuracy = 0.1)," of students)\r",
+    DFW_students," of ",students," enrollments\r",
+    percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
+  scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
+  guides(fill = guide_legend(override.aes = list(size = 5), title="")) +
+    labs(y = "")-> plot
+  
+  #Creates title in Markdown format
+  cat('\n##', pairTitle , '\n')
+  #prints interactive visualization
+  print(htmltools::tagList(girafe(ggobj = plot)))
+  #prints table
+  print(table)
+  
 }
 ```
 
-```{r, include=FALSE}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, include=FALSE, warning=FALSE}
 library(ggiraph)
 library(scales)
 ```
 
 <br><br><br><br><br>
 
-## DFW Rate Visualizations for `r d1$course[1]`
+<!-- # DFW Rate Visualizations for `r d1$course[1]` -->
 
 
-```{r, results='asis', include=TRUE, echo=FALSE, fig.height=4}
+```{r, results='asis', include=FALSE, echo=FALSE, fig.height=4}
 for (i in keptCols) { 
 d1 %>%
   group_by(course, !!sym(i)) %>%
@@ -303,8 +426,10 @@ d1 %>%
   
   
 if (b4maxCheck$DFW_max[1] > 0.5) {
-  upperLimit <- b4maxCheck$DFW_max[1] + 0.1 }
-else { upperLimit <- 0.5 }
+  upperLimit <- b4maxCheck$DFW_max[1] + 0.1 
+} else {
+    upperLimit <- 0.5
+    }
   
   b4maxCheck %>%
   arrange(desc(students)) -> sorted_d1
@@ -332,14 +457,97 @@ else { upperLimit <- 0.5 }
     DFW_students," of ",students," enrollments\r",
     percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
   scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
-  guides(fill = guide_legend(override.aes = list(size = 10))) +
-  labs(fill = sym(i), y = "Course") +
-  ggtitle(paste(i, "DFW Rates")) -> plot
+  guides(fill = guide_legend(override.aes = list(size = 10), title="")) +
+  labs(fill = sym(i), y = "") -> plot
   
+cat('\n##', i , '\n')
+
 print(htmltools::tagList(girafe(ggobj = plot))) # Use htmltools::tagList() to generate multiple interactive plots
                                                 # results = 'asis' must go in {}
+cat('\n')
 }
 ```
+
+<br><br><br><br><br>
+
+<!-- # DFW Rate Intersectionality Visualizations for `r d1$course[1]` -->
+
+```{r, results='asis', include=FALSE, echo=FALSE, warning=FALSE}
+
+for (i in seq(from = 1, to = length(keptColsInt), by=2)) {
+  pair <- c(keptColsInt[i], keptColsInt[i+1]) 
+  pairTitle <- paste(keptColsInt[i],"&",keptColsInt[i+1])
+d1 %>%
+    group_by(course, !!sym(pair[1]), !!sym(pair[2])) %>%
+    summarize(DFW = sum(ABCDFW == "DFW")/n(), students=n(), DFW_students=sum(ABCDFW == "DFW"), .groups = "drop" ) %>%
+    mutate(DFW_min = min(DFW), DFW_max = max(DFW) ) %>%
+    mutate(intersection = paste(!!sym(pair[1]),!!sym(pair[2]), sep = "-")) %>%
+  mutate(students_in_gap = students[which.max(DFW)]*(max(DFW)-min(DFW)), diversity = students/sum(students), total_enrollment =      sum(students) ) -> b4maxCheck
+if (b4maxCheck$DFW_max[1] > 0.5) {
+  upperLimit <- b4maxCheck$DFW_max[1] + 0.1 
+  } else { 
+  upperLimit <- 0.5 
+ }
+  b4maxCheck %>%
+  arrange(desc(students)) -> sorted_d1
+sorted_d1 %>%
+    pull(intersection) -> cat_sorted
+  sorted_d1 %>%
+  mutate(cat_factors = factor(intersection, levels = cat_sorted)) %>%
+  ggplot(aes(x = DFW, y = course, size = students, fill = intersection)) + 
+  theme_classic() +
+    
+    
+      geom_segment_interactive(aes(x = DFW_min, xend = DFW_max, yend=course, tooltip = paste(
+    course,"\r",
+    intersection,"\r",
+    "Percentage Points Gap:",percent(DFW_max - DFW_min, accuracy = 0.1),"\r",
+    "Grade Ratio:",round(DFW_max/DFW_min, digits = 2),"\r",
+    "Students in Gap:",round(students_in_gap, digits = 1),"\r",
+    "Total Enrollments:",total_enrollment,"\r"
+    )), colour = "gray", linewidth = 15) +
+  scale_size(range = c(5,15), guide = "none") +
+  geom_point_interactive(aes(size = students, tooltip = paste0(
+    course,"\r",
+    intersection," (",percent(diversity,accuracy = 0.1)," of students)\r",
+    DFW_students," of ",students," enrollments\r",
+    percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
+
+  scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
+  guides(fill = guide_legend(override.aes = list(size = 5), title="")) -> plot
+  
+    cat('\n##', pairTitle , '\n')
+  
+  print(htmltools::tagList(girafe(ggobj = plot)))
+  
+  cat('\n')
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ```{r, include=FALSE}
@@ -505,7 +713,7 @@ dt %>%
 ```
 
 
-```{r, include=TRUE}
+```{r, include=FALSE}
 dt %>%
   group_by(course,gender, firstgen) %>%
   summarize( DFW = sum(ABCDFW == "DFW")/n(), students = n(), .groups = "drop" ) %>%
