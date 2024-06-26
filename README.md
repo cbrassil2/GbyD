@@ -11,7 +11,7 @@ To create your own reports you will need access to student level data, in which 
 
 **Quick Start**
 
--   Download and install RStudio at https://posit.co/download/rstudio-desktop/
+-   Download and install R and RStudio at https://posit.co/download/rstudio-desktop/
 -   Download the R Markdown file [Grades_by_Demographics.Rmd](Grades_by_Demographics.Rmd) and place into a folder of your choice.
 -   Format a csv data file in which each row is an individual student enrolled in a single class. You can follow the format in [data_sim.csv](data_sim.csv). Optionally, you can use data_sim.csv in the next steps to practice while setting up the code.
     -  Critically, you need the columns with the following titles:
