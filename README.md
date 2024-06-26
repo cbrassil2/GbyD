@@ -1,16 +1,19 @@
 # GbyD
 Grade by Demographics Report
 
-This R script is designed to be user-friendly allowing instructors to survey student grades with respect to demographic categories like gender, generation, or race/ethnicity.
+This R Markdown file is a user-friendly may to convert a data file of individual student grades and demographics into a report designed to enable instructors to self-refelect on how course letter grades differ by demographics. View an example report using synthetic data at https://cbrassil2.github.io/GbyD/Grades_by_Demographics
 
-You will need to download the programming language R and the program RStudio in order to use this RMarkdown (.rmd) file.
-Go to this link to download R and RStudio: https://posit.co/download/rstudio-desktop/
+While the R code is provided for advanced users, the expectation is that most users will manipulate their data file to achieve the customization of the report for their institution. The code is designed to be robust to variation in the data file, and a few options can be be adjusted to change how the report processes the data and displays the output. See details below.
 
-RMarkdown allows you to work with code in R and in Markdown which is another simple programming language.
+The report includes some introductory framing for instructors to consider. Then student success data, such as DFW rates is displayed by each demographic summed across semesters, by combinations of demographics, and across time. Integrated into each section are guiding questions for self-reflection and for use by groups of instructors in teams or learning communities. Finally, resources are provided for changing classes including links to books, articles, online repositories, and free online courses. 
 
-You can run chunks of R code individually or click the Knit button to create a report in an HTML format.
+To create your own reports you will need access to student level data, in which each line of the file is a student grade in a particular course along with the demographic information you wish to analyze. Second, download and install RStudio and the R Markdown file on this site. Steps are detailed here.
 
-The code will install four R packages that are required to run this script if they are not already present on your machine: tidyverse, gt, ggiraph, and scales.
+-   Download and install RStudio at https://posit.co/download/rstudio-desktop/
+-   Format a csv data file in which each row is an individual student enrolled in a single class. You can follow the format in [data_sim.csv](data_sim.csv)  
+-   Click the Knit button to create a report in an HTML format. The will create a single file that can be shared (for example via email) with others as appropriate. The html file is the most user-friendly format becuase the figures have mouse-over features that allows instructors to easily seek deeper information within the figure. 
+
+
 
 The code is setup to work with a file called data_sim.csv. You will need to change the name of your data file to data_sim.csv for the program to generate a report.
 
