@@ -3,7 +3,7 @@
 
 This R Markdown file is a user-friendly way to convert a data file of individual student grades and demographics into a guided report designed to enable instructors to self-refelect on how course letter grades differ by demographics. View an example report using synthetic data at https://cbrassil2.github.io/GbyD/Grades_by_Demographics
 
-The report includes some introductory framing for instructors to consider. Then student success data, such as DFW rates is displayed by each demographic summed across semesters, by combinations of demographics, and across time. Integrated into each section are guiding questions for self-reflection and for use by groups of instructors in teams or learning communities. Finally, resources are provided for changing classes including links to books, articles, online repositories, and free online courses. 
+The report includes some introductory framing for instructors to consider. DFW rates are displayed by each demographic summed across semesters, by combinations of demographics, and across time. Integrated into each section are guiding questions for self-reflection. Finally, resources are provided for change including links to books, articles, online repositories, and free online courses. 
 
 **Quick Start**
 
