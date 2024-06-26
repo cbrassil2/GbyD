@@ -18,7 +18,7 @@ The report includes some introductory framing for instructors to consider. DFW r
     -  Place your data file in the same folder as the Grades_by_Demographics.Rmd file.
 -   Open RStudio, and within RStudio open the file Grades_by_Demographics.Rmd
 -   Modify the line early in the Grades_by_Demographics.Rmd file by changing ds <- read_csv("data_sim.csv") to the name of your file instead of data_sim.csv.
--   Click the Knit button to create a report in an HTML format. The will create a single file that can be shared (for example via email) with others as appropriate. The html file is the most user-friendly format becuase the figures have mouse-over features that allows instructors to easily seek deeper information within the figures. 
+-   Click the **Knit** button at the top to create a report in an HTML format. The will create a single file that can be shared (for example via email) with others as appropriate. The html file is the most user-friendly format becuase the figures have mouse-over features that allows instructors to easily seek deeper information within the figures. 
 
 **Modifying the Report**
 
