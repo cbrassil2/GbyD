@@ -15,7 +15,7 @@ To create your own reports you will need access to student level data, in which 
 -   Download the R Markdown file [Grades_by_Demographics.Rmd](Grades_by_Demographics.Rmd) and place into a folder of your choice.
 -   Format a csv data file in which each row is an individual student enrolled in a single class. You can follow the format in [data_sim.csv](data_sim.csv). Optionally, you can use data_sim.csv in the next steps to practice while setting up the code.
     -  Critically, you need the columns with the following titles:
-        -  course - you can use any name or code that is understandable to your institutional audience
+        -  course - you can use any name or code that is understandable to your institutional audience. You can include a single course or multiple courses.
         -  grade - course letter grades, +/- is optional, will ignore anything outside of A+ through F or W.
         -  semester - ideally coded as season and year or month and year, for example "Fall 2023" or "August 2023".
     - Include other columns named however you want it labelled in the report (for example with a capital letter). Similarly, entries for that column should be formatted as you want them displayed in the report (for example "Female" or "F"). You can use any spreadsheet program to format or rename these as desired. If your data is in Excel format, save it as a csv file.
