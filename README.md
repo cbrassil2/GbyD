@@ -31,7 +31,11 @@ The code is designed to be robust to variation in the data file; it wil accomoda
 -  When a threshold is not met either aggregate the whole demographic factor or just remove the single category which did not meet the threshold. Removing teh single category allows other demographic values to be shown, but makes it less obvious that some demographic categories are being hidden from view. In the code, this is called "censor_by_removal".
 -  Hide or show NA values. This will remove stray NA values broadly defined, but if empty cells represent a meaningfull demographic category, you can turn this off. In the code this is called "hide_NA".
 -  Display just DFW rates or display success rates (1-DFW) along with the the GPA of students who had A, B, or C grades. While DFW rates are the most common metric to analyze, this traditional analysi can be complimented by analyzing demographic differences among students that achieved a C or higher grade, labelled here as GPA excluding DF. When the GPA excluding DF is shown, the DFW rates are flipped to becuase success rates, i.e. 1-DFW so that that the Success axis and the GPA axis are aligned. In the code this is called "show_GPA_excluding_DF".
--  There is an option to specify a subset of courses from the data file to be displayed in the report. In the code this is called "which_courses".
+-  Download [Batch_Script_for_Grades_by_Demographics.R](Batch_Script_for_Grades_by_Demographics,R) and [Batch_Course_Codes.csv](Batch_Course_Codes.csv) to render batches of reports automatically for sets of courses, individually or in groups, as defined in the csv file. In the csv file, list the prefix or prefixes for courses to be included in the report. For example "Chem" will create a report that includes all Chem courses.
+
+**Example Use Case Studies***
+
+Reports that sum together sets of courses can be created by replacing the course name in the data_grade_demographics.csv with the appropriate level or roll-up. For example, replacing courses codes such as CHEM 101, CHEM 102, and CHEM 201 with CHEM would roll-up all of those courses into a single line. Alternatively, one could replace CHEM 101 and CHEM 102 with CHEM 1XX and CHEM 201 with CHEM 2XX. That would produce a report showing levels of courses with the subject instead of individual courses within the subject.
 
 **Contact Information**
 
