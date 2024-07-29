@@ -17,7 +17,7 @@ The report includes some introductory framing for instructors to consider. DFW r
     - Include additioinal demographics columns for analysis, named how you want them labelled in the report (for example with a capital letter). Similarly, entries for that column should be formatted as you want them displayed in the report (for example "Female" or "F"). You can use any spreadsheet program to format or rename these as desired. If your data is in Excel format, save it as a csv file.
     -  Place your data file in the same folder as the Grades_by_Demographics.Rmd file and name your file data_grade_demographics.csv (or modify the read_csv line in the code).
 -   Open RStudio, and within RStudio open the file Grades_by_Demographics.Rmd
--   Click the **Knit** button at the top to create a report in an HTML format. The will create a single file that can be shared (for example via email) with others as appropriate. The html file is the most user-friendly format becuase the figures have mouse-over features that allows instructors to easily seek deeper information within the figures. 
+-   Click the **Knit** button at the top to create a report in an HTML format. The will create a single file that can be shared (for example via email). The html file is the most user-friendly format becuase the figures have mouse-over features that allows instructors to easily seek deeper information within the figures. 
 
 **Modifying the Report**
 
