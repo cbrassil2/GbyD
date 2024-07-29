@@ -10,10 +10,10 @@ The report includes some introductory framing for instructors to consider. DFW r
 -   Download and install R and RStudio at https://posit.co/download/rstudio-desktop/
 -   Download the R Markdown file [Grades_by_Demographics.Rmd](Grades_by_Demographics.Rmd) and place into a folder of your choice.
 -   Format a csv data file in which each row is an individual student enrolled in a single class. You can follow the format in [data_grade_demographics.csv](data_grade_demographics.csv). By default this file represents synthetic data and can be used in the next steps to practice setting up the code.
-    -  Critically, you need the columns with the following titles:
+    -  Critically, the data files needs columns with the following headings:
         -  course - you can use any name or code that is understandable to your institutional audience.
         -  grade - course letter grades, +/- is optional, will ignore anything outside of A+ through F or W.
-        -  semester - ideally coded as season and year or month and year, for example "Fall 2023" or "August 2023". You can also code as academic years, for example "2022-23".
+        -  semester - coded as season and year or month and year, for example "Fall 2023" or "August 2023". It can also be coded as academic years, for example "2022-23".
     - Include other columns named however you want it labelled in the report (for example with a capital letter). Similarly, entries for that column should be formatted as you want them displayed in the report (for example "Female" or "F"). You can use any spreadsheet program to format or rename these as desired. If your data is in Excel format, save it as a csv file.
     -  Place your data file in the same folder as the Grades_by_Demographics.Rmd file.
 -   Open RStudio, and within RStudio open the file Grades_by_Demographics.Rmd
