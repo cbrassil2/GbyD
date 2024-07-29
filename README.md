@@ -14,17 +14,16 @@ The report includes some introductory framing for instructors to consider. DFW r
         -  course - you can use any name or code that is understandable to your institutional audience.
         -  grade - course letter grades, +/- is optional, will ignore anything outside of A+ through F or W.
         -  semester - coded as season and year or month and year, for example "Fall 2023" or "August 2023". It can also be coded as academic years, for example "2022-23".
-    - Include other columns named however you want it labelled in the report (for example with a capital letter). Similarly, entries for that column should be formatted as you want them displayed in the report (for example "Female" or "F"). You can use any spreadsheet program to format or rename these as desired. If your data is in Excel format, save it as a csv file.
-    -  Place your data file in the same folder as the Grades_by_Demographics.Rmd file.
+    - Include additioinal demographics columns for analysis, named how you want them labelled in the report (for example with a capital letter). Similarly, entries for that column should be formatted as you want them displayed in the report (for example "Female" or "F"). You can use any spreadsheet program to format or rename these as desired. If your data is in Excel format, save it as a csv file.
+    -  Place your data file in the same folder as the Grades_by_Demographics.Rmd file and name your file data_grade_demographics.csv (or modify the read_csv line in the code).
 -   Open RStudio, and within RStudio open the file Grades_by_Demographics.Rmd
--   Modify the line early in the Grades_by_Demographics.Rmd file by changing ds <- read_csv("data_sim.csv") to the name of your file instead of data_sim.csv.
 -   Click the **Knit** button at the top to create a report in an HTML format. The will create a single file that can be shared (for example via email) with others as appropriate. The html file is the most user-friendly format becuase the figures have mouse-over features that allows instructors to easily seek deeper information within the figures. 
 
 **Modifying the Report**
 
 The expectation is that most users will simply manipulate their data file to achieve the customization of the report for their institution. This can be done in Excel or equivalent spreasheet software. For example, add or remove courses to the data file that you want included. Change the names of column headers to change how they are displayed in the report. Use find/replace in your spreadsheet software to change how categories are displayed in the report.
 
-The code is designed to be robust to variation in the data file; it wil accomodate variation in capitlization and naming conventions. As well, it will accomodate a series of semester naming conventions. A few options can be be adjusted to change how the report processes the data and displays the output. This are located at the bottom of the first chunk of code in Grades_by_Demographics.Rmd. All options have default values, so these can be explored at a later point your process.
+The code is designed to be robust to variation in the data file; it wil accomodate variation in capitlization and naming conventions. As well, it will accomodate a series of semester naming conventions. A few options can be be adjusted to change how the report processes the data and displays the output. This are located at the bottom of the first chunk of code in Grades_by_Demographics.Rmd.
 
 **Options** can be adjusted in the code for this report that do the following:
 -  Adjust the minimum threshold for required for a demographic factor to be shown. In the code, this is called "threshold".
