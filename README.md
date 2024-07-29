@@ -9,7 +9,7 @@ The report includes some introductory framing for instructors to consider. DFW r
 
 -   Download and install R and RStudio at https://posit.co/download/rstudio-desktop/
 -   Download the R Markdown file [Grades_by_Demographics.Rmd](Grades_by_Demographics.Rmd) and place into a folder of your choice.
--   Format a csv data file in which each row is an individual student enrolled in a single class. You can follow the format in [data_grade_demographics.csv](data_grade_demographics.csv). This file can be used the next steps to practice  setting up the code.
+-   Format a csv data file in which each row is an individual student enrolled in a single class. You can follow the format in [data_grade_demographics.csv](data_grade_demographics.csv). By default this file represents synthetic data and can be used in the next steps to practice setting up the code.
     -  Critically, you need the columns with the following titles:
         -  course - you can use any name or code that is understandable to your institutional audience.
         -  grade - course letter grades, +/- is optional, will ignore anything outside of A+ through F or W.
