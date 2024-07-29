@@ -35,7 +35,7 @@ The code is designed to be robust to variation in the data file; it wil accomoda
 
 **Example Use Cases**
 
-Reports that sum together sets of courses can be created by replacing the course name in the data_grade_demographics.csv with the appropriate level or roll-up. For example, replacing courses codes such as CHEM 101, CHEM 102, and CHEM 201 with CHEM would roll-up all of those courses into a single line. Alternatively, one could replace CHEM 101 and CHEM 102 with CHEM 1XX and CHEM 201 with CHEM 2XX. That would produce a report showing levels of courses with the subject instead of individual courses within the subject.
+Reports that sum together sets of courses can be created by replacing the course name in data_grade_demographics.csv with the desired roll-up. For example, replacing courses codes such as CHEM 101, CHEM 102, and CHEM 201 with CHEM would roll up all of those courses into a single line. Alternatively, one could replace CHEM 101 and CHEM 102 with CHEM 1XX and CHEM 201 with CHEM 2XX to produce a report showing levels of courses with the subject instead of individual courses within the subject.
 
 **Contact Information**
 
