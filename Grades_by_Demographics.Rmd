@@ -44,13 +44,15 @@ ds <- read_csv("data_grade_demographics.csv")
 
 #course_prefix can be used to create a report for a subset of courses in the data file. In the YAML header, which are the lines at the very top of the this file change c("all") to a single course, like c("Calc1") or a list, for example c("Calc","Chem") to include all courses that begin with the listed prefixes. The Batch_Script_for_Grades_by_Demographics.R can be used along with Batch_Course_Codes.csv to create separate reports for subsets of course. 
 
+area_is_total <- TRUE #Set to TRUE to scale the area of points to the total number of student, i.e. the denominator in DFW percent. This may help visualize the distribution of students across categories. Set to FALSE to scale the area of points to the number of DFW students, i.e. the numerator in DFW percent. This may help visualize categories in which you have lots of DFW students. However, be aware that setting area_is_total to FALSE will result in points disappearing if all students for a category succeeded. Note, if showing GPA, the area for GPA graphs will always be total number of students.
+
 threshold <- 5 #Threshold number of students needed in order for a demographic combination to be disaggregated. The standards for most schools are 5 or 10
 
 censor_by_removal <- TRUE #Set to TRUE to remove just the categories that don't meet the threshold. Set to FALSE to keep all data but aggregate when any one category does not meet the threshold.
 
-hide_NA <- TRUE #Set to FALSE to show NA's in fields. Set to TRUE to hide NAs.
+hide_NA <- TRUE #Set to TRUE to hide NAs. Set to FALSE to show NA's in fields.
 
-show_GPA_excluding_DF <- FALSE #Set to TRUE to show GPA excluding DF and switch DFW to Success = 1-DFW so that direction of figures is aligned. Set to FALSE to hide GPA exclude DF figures and tables and show DFW not 1-DFW
+show_GPA_excluding_DF <- FALSE #Set to FALSE to hide GPA exclude DF figures and tables and show DFW not 1-DFW. Set to TRUE to show GPA excluding DF and switch DFW to Success = 1-DFW so that direction of figures is aligned. 
 
 #
 ```
@@ -170,7 +172,7 @@ At the same time, instructors are challenged, by the nature of their profession,
 
 ## Navigation of Figures
 
-In the figures, the sizes of the circles are proportional to the number of students in the category. Mouse over a circle for specific details on the number of students, the percentage of students that represents, and details on grades.
+`r if(area_is_total) "In the figures, the area of the circles are proportional to the total number of student enrollments in the category." else"In the figures, the area of the circles are proportional to the number of DFW students in the category."` Mouse over a circle for specific details on the number of student enrollments, the percentage of enrollments that represents, and details on grades.
 
 `r if(show_GPA_excluding_DF) "In some cases, figures are shown for **DFW** and for **GPA excluding DF**. The later is the grade point average in a give class for students who achieved an A, B, or C. It is a compliment to disaggregated DFW rates because it disaggregates high achieveing students."`
 
@@ -232,7 +234,7 @@ metThresholds %>%
   paste0(collapse = "\n\n")-> droppedCols
 
 #Print names of removed columns
-if (droppedCols != "") cat("\nThe following are not shown because they did not meet minimum threshold of students for all categories:\n\n",droppedCols,'\n', sep="")
+if (droppedCols != "") cat("\nThe following are not shown because they did not meet minimum threshold of student enrollments for all categories:\n\n",droppedCols,'\n', sep="")
 
 # Generate a table for each demographic category included
 for (i in levels(combosToPlot$demograph)) {
@@ -242,21 +244,18 @@ combosToPlot %>%
     select(course) %>%
     distinct() -> courseList #Tibble of courses that met threshold for this demographic
 
-#DFW 
+#DFW or Success
 dt %>%
   {if(censor_by_removal == FALSE) right_join(.,courseList, by = c("course")) else .} %>% #only keep the courses that met thresholds for this demographic
   filter(if_else( hide_NA & ( is.na(!!sym(i)) | !!sym(i) %in% c("","NA","NaN") ),FALSE,TRUE) ) %>% #filter out NA values or equivalent
   group_by(course, !!sym(i)) %>%
-#  filter(if_else( censor_by_removal & n() < threshold,FALSE,TRUE)) %>% #filter out censor_by_removal categories
-#  summarize(DFW_rate = sum(ABCDFW == "DFW")/n(), DFW = paste0(percent(sum(ABCDFW == "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW == "DFW")," of ",n(),")</span>"),  .groups = "drop" ) %>%
-  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(ABCDFW == "DFW")/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(ABCDFW == "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW == "DFW")," of ",n(),")</span>")),  .groups = "drop" ) %>%
+  {if (show_GPA_excluding_DF) mutate(.,to_sum = ABCDFW != "DFW") else mutate(.,to_sum = ABCDFW == "DFW") } %>% #Success or DFW
+  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(to_sum)/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(to_sum)/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(to_sum)," of ",n(),")</span>")), .groups = "drop" ) %>%
   group_by(course) %>%
   mutate(Gap = max(DFW_rate) - min(DFW_rate)) %>%
   mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank  
   select(-DFW_rate) %>%
   pivot_wider(names_from = !!i, values_from=DFW) %>%
-#  group_by(course) %>%
-#  mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
   relocate(Gap, .after = "course") %>%
   mutate(demCat = i) %>% 
   group_by(demCat) %>%
@@ -274,36 +273,6 @@ dt %>%
     style = cell_text(weight = "bold"),
     locations = cells_body(columns = Gap)) -> table
 
-#Success 
-dt %>%
-  {if(censor_by_removal == FALSE) right_join(.,courseList, by = c("course")) else .} %>% #only keep the courses that met thresholds for this demographic
-  filter(if_else( hide_NA & ( is.na(!!sym(i)) | !!sym(i) %in% c("","NA","NaN") ),FALSE,TRUE) ) %>% #filter out NA values or equivalent
-  group_by(course, !!sym(i)) %>%
-#  filter(if_else( censor_by_removal & n() < threshold,FALSE,TRUE)) %>% #filter out censor_by_removal categories
-#  summarize(DFW_rate = sum(ABCDFW == "DFW")/n(), DFW = paste0(percent(sum(ABCDFW == "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW == "DFW")," of ",n(),")</span>"),  .groups = "drop" ) %>%
-  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(ABCDFW == "DFW")/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(ABCDFW != "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW != "DFW")," of ",n(),")</span>")),  .groups = "drop" ) %>%
-  group_by(course) %>%
-  mutate(Gap = max(DFW_rate) - min(DFW_rate)) %>%
-  mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank
-  select(-DFW_rate) %>%
-  pivot_wider(names_from = !!i, values_from=DFW) %>%
-  relocate(Gap, .after = "course") %>%
-  mutate(demCat = i) %>% 
-  group_by(demCat) %>%
-  gt(rowname_col="course") %>% # Table creation starts here
-  fmt_markdown(columns = !c("course","Gap","demCat")) %>%
-  fmt_percent(decimals = 1, rows = everything()) %>%
-  sub_missing(missing_text="") %>%
-  tab_style(
-    style = cell_text(v_align = "top"),
-    locations = list(cells_body(columns = everything()), cells_stub())) %>%
-  tab_style_body(
-      style = cell_fill(color = "yellow2"),
-      values = "Below Threshold") %>%    
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = Gap)) -> table_success
-
 #GPA_exclude_DF
 dt %>%
   {if(censor_by_removal == FALSE) right_join(.,courseList, by = c("course")) else .} %>% #only keep the courses that met thresholds for this demographic
@@ -315,7 +284,7 @@ dt %>%
   pivot_wider(names_from = !!i, values_from=GPA_exclude_DFW) %>%
   group_by(course) %>%
   mutate(Gap = max(across(!matches("course"))) - min(across(!matches("course")))) %>%
-  mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank
+  mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically because no only a single value) with NA, which will be blank
   relocate(Gap, .after = "course") %>%
   mutate(demCat = i) %>% 
   group_by(demCat) %>%
@@ -333,6 +302,7 @@ dt %>%
 dt %>%
   {if(censor_by_removal == FALSE) right_join(.,courseList, by = c("course")) else .} %>% #only keep the courses that met thresholds for this demographic
   filter(if_else( hide_NA & ( is.na(!!sym(i)) | !!sym(i) %in% c("","NA","NaN") ),FALSE,TRUE) ) %>% #filter out NA values or equivalent
+  mutate(course = fct_rev(course)) %>% #reverse courses so that they match the order of the table
   group_by(course, !!sym(i)) %>%
   filter(if_else( censor_by_removal & n() < threshold,FALSE,TRUE)) %>% #filter out censor_by_removal categories
   mutate(GPA_exclude_DFW = if_else(ABCDFW=="ABC",grade_point,NaN)) %>%
@@ -342,69 +312,55 @@ dt %>%
   mutate(students_in_gap = students*(DFW-min(DFW))) %>%
   mutate(students_in_gap = sum(students_in_gap, na.rm=TRUE), diversity = students/sum(students), total_enrollment = sum(students) ) -> b4maxCheck
 
-# Sets scale of x-axis to 50% or highest Max + 10%
-if (max(b4maxCheck$DFW_max, na.rm=TRUE) > 0.5) {
-  upperLimit <- max(b4maxCheck$DFW_max, na.rm=TRUE) + 0.1} else {
-    upperLimit <- 0.5}
 
-#DFW
+if (show_GPA_excluding_DF == FALSE){
+  lowerLimit <- 0;
+  # Sets scale of x-axis to 50% or highest Max + 10%
+  if (max(b4maxCheck$DFW_max, na.rm=TRUE) > 0.5) {
+    upperLimit <- max(b4maxCheck$DFW_max, na.rm=TRUE) + 0.1} else {
+      upperLimit <- 0.5};
+  unit_text = "DFW";
+  title_text = "DFW Rates"
+} else {
+  # Sets scale of x-axis to 50% or lowest Min - 10%
+  if (min(1-b4maxCheck$DFW_max, na.rm=TRUE) < 0.5) {
+    
+    lowerLimit <- min(1-b4maxCheck$DFW_max, na.rm=TRUE) - 0.1} else {
+      lowerLimit <- 0.5};
+  upperLimit <- 1;
+  unit_text = "Success";
+  title_text = "Success Rates (1-DFW)"
+}
+
+#DFW or Success
 b4maxCheck %>%
-  arrange(desc(students)) %>%
-  mutate(cat_factors = fct_reorder(!!sym(i), DFW, .desc=TRUE)) %>%
+  rowwise() %>% #needed to force the calculation of size_variable at the row_level
+  mutate(size_variable = if_else(area_is_total==TRUE,students,DFW_students)) %>%
+  ungroup() %>%
+  mutate(cat_factors = fct_reorder(!!sym(i), DFW, .desc=TRUE)) %>% #orders legend on DFW rates
+  group_by(course) %>%
+  arrange(desc(size_variable)) %>% #orders circles so biggest in the back for each course
+  {if (show_GPA_excluding_DF) mutate(.,DFW = 1-DFW, DFW_min_temp = DFW_min, DFW_min = 1- DFW_max, DFW_max = 1 - DFW_min_temp ) else .} %>% #if success, swap data
   ggplot(aes(x = DFW, y = course, fill = cat_factors)) + # Interactive plotting code starts here
   theme_classic() +
   theme(axis.text = element_text_interactive(size = 12) ) +
   theme(plot.title = element_text(hjust = 0.5)) +  
   geom_segment_interactive(aes(x = DFW_min, xend = DFW_max, yend=course, tooltip = paste(
     course,"\r",
-    #!!sym(i),"\r",
     "Percentage Points Gap:",percent(DFW_max - DFW_min, accuracy = 0.1),"\r",
     "Grade Ratio:",round(DFW_max/DFW_min, digits = 2),"\r",
     "Students in Gap:",round(students_in_gap, digits = 1),"\r",
     "Total Enrollments:",total_enrollment,"\r"
-    )), colour = "gray", linewidth = 15) +
-  scale_size(range = c(5,15), guide = "none") +
-  geom_point_interactive(aes(size = students, tooltip = paste0(
+    ), data_id = course), colour = "gray", linewidth = 15) +
+  scale_size_area(max_size= 15, breaks = NULL, guide = "none") +
+  geom_point_interactive(aes(size = size_variable, tooltip = paste0(
     course,"\r",
-    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of students)\r",
-    DFW_students," of ",students," enrollments\r",
-    percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
-  scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
-  guides(fill = guide_legend(override.aes = list(size = 10), title= i)) +
-  labs(fill = sym(i), y = "", title = "DFW Rates") -> plot
-
-
-# Sets scale of x-axis to 50% or lowest Min - 10%
-if (min(1-b4maxCheck$DFW_max, na.rm=TRUE) < 0.5) {
-  lowerLimit <- min(1-b4maxCheck$DFW_max, na.rm=TRUE) - 0.1} else {
-    lowerLimit <- 0.5}
-
-#Success Rates: 1 - DFW
-b4maxCheck %>%
-  arrange(desc(students)) %>%
-  mutate(cat_factors = fct_reorder(!!sym(i), DFW, .desc=TRUE)) %>%
-  mutate(Success = 1-DFW, Success_max = 1- DFW_max, Success_min = 1 - DFW_min ) %>%
-  ggplot(aes(x = Success, y = course, fill = cat_factors)) + # Interactive plotting code starts here
-  theme_classic() +
-  theme(axis.text = element_text_interactive(size = 12) ) +
-  theme(plot.title = element_text(hjust = 0.5)) +  
-  geom_segment_interactive(aes(x = Success_min, xend = Success_max, yend=course, tooltip = paste(
-    course,"\r",
-    #!!sym(i),"\r",
-    "Percentage Points Gap:",percent(Success_max - Success_min, accuracy = 0.1),"\r",
-    "Grade Ratio:",round(Success_min/Success_max, digits = 2),"\r",
-    "Students in Gap:",round(students_in_gap, digits = 1),"\r",
-    "Total Enrollments:",total_enrollment,"\r"
-    )), colour = "gray", linewidth = 15) +
-  scale_size(range = c(5,15), guide = "none") +
-  geom_point_interactive(aes(size = students, tooltip = paste0(
-    course,"\r",
-    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of students)\r",
-    DFW_students," of ",students," enrollments\r",
-    percent(Success, accuracy = 0.1)," Success" )) , shape = 21) +
-  scale_x_continuous(labels = scales::percent, limits = c(lowerLimit,1)) +
-  guides(fill = guide_legend(override.aes = list(size = 10), title= i)) +
-  labs(fill = sym(i), y = "", title = "Success Rates (1-DFW)") -> plot_success
+    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of enrollments)\r",
+    percent(DFW, accuracy = 0.1)," ",unit_text," (",DFW_students," of ",students," enrollments)"),
+    data_id = cat_factors:course) , shape = 21) +
+  scale_x_continuous(labels = scales::percent, limits = c(lowerLimit,upperLimit)) +
+  guides(fill = guide_legend_interactive(override.aes = list(size = 10), title= i)) +
+  labs(fill = sym(i), y = "", x = unit_text, title = title_text) -> plot
 
 
 # Sets scale of x-axis to 3.0 or lowest GPA - 0.1
@@ -412,7 +368,7 @@ if (min(b4maxCheck$GPA_exclude_DFW_min, na.rm=TRUE) < 3.0) {
   lowerLimit <- min(b4maxCheck$GPA_exclude_DFW, na.rm=TRUE) - 0.1} else {
     lowerLimit <- 3.0}
 
-# Sets scale of x-axis to 3.0 or lowest GPA - 0.1
+# Sets scale of x-axis to 3.5 or highest GPA + 0.1
 if (max(b4maxCheck$GPA_exclude_DFW_min, na.rm=TRUE) > 3.5) {
   upperLimit <- max(b4maxCheck$GPA_exclude_DFW, na.rm=TRUE) + 0.1} else {
     upperLimit <- 3.5}
@@ -427,17 +383,16 @@ b4maxCheck %>%
   theme(plot.title = element_text(hjust = 0.5)) +
   geom_segment_interactive(aes(x = GPA_exclude_DFW_min, xend = GPA_exclude_DFW_max, yend=course, tooltip = paste(
     course,"\r",
-    #!!sym(i),"\r",
     "GPA Gap:",number(GPA_exclude_DFW_max - GPA_exclude_DFW_min, accuracy = 0.01),"\r",
     "Grade Ratio:",round(GPA_exclude_DFW_max/GPA_exclude_DFW_min, digits = 2),"\r",
     "Total Enrollments:",total_enrollment,"\r"
-    )), colour = "gray", linewidth = 15) +
-  scale_size(range = c(5,15), guide = "none") +
+    ), data_id = course), colour = "gray", linewidth = 15) +
+  scale_size_area(max_size= 15, breaks = NULL, guide = "none") +
   geom_point_interactive(aes(size = students, tooltip = paste0(
     course,"\r",
-    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of students)\r",
+    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of enrollments))\r",
     students," enrollments\r",
-    number(GPA_exclude_DFW, accuracy = 0.01)," GPA excluding DF" )) , shape = 21) +
+    number(GPA_exclude_DFW, accuracy = 0.01)," GPA excluding DF"), data_id = cat_factors:course) , shape = 21) +
   scale_x_continuous(labels = scales::number, limits = c(lowerLimit,upperLimit)) +
   guides(fill = guide_legend(override.aes = list(size = 10), title= i)) +
   labs(fill = sym(i), y = "", x = "GPA excluding DF", title = "Grade Point for ABC Students") -> plot_GPA
@@ -447,13 +402,13 @@ cat('\n##', i , '\n')
 
 if(show_GPA_excluding_DF) cat('\n###', i , "- DFW",  '\n')
 
-if(show_GPA_excluding_DF) print(htmltools::tagList(girafe(ggobj = plot_success))) else print(htmltools::tagList(girafe(ggobj = plot))) # Use htmltools::tagList() to generate multiple interactive plots # results = 'asis' must go in {}
-                                                
-if(show_GPA_excluding_DF) print(table_success) else print(htmltools::tagList(table))
+print(htmltools::tagList(girafe(ggobj = plot, options=list(opts_hover(girafe_css(css="", point = "stroke-width:2", line = "stroke:DarkGray")) ) ))) # Use htmltools::tagList() to generate multiple interactive plots # results = 'asis' must go in {}
+
+print(htmltools::tagList(table))
 
 if(show_GPA_excluding_DF) cat('\n###', i , "- GPA excluding DF",  '\n')
 
-if(show_GPA_excluding_DF) print(htmltools::tagList(girafe(ggobj = plot_GPA)))
+if(show_GPA_excluding_DF) print(htmltools::tagList(girafe(ggobj = plot_GPA, options=list(opts_hover(girafe_css(css="", point = "stroke-width:2", line = "stroke:DarkGray"))))))
 
 if(show_GPA_excluding_DF) print(table_GPA)
 }
@@ -470,7 +425,7 @@ if(show_GPA_excluding_DF) print(table_GPA)
 
 -   How do combinations of demographics affect student success? Does each factor act additively, or is there an interaction such that the response of one factor is smaller or larger based on the other factor? 
 
--   Mouse over the circles to consider the percentage of students in each demographic combination. Is there a combination of demographics that are disproportionately represented in a course? Does that surprise you? Alternatively, does it surprise you that not all students are in that combination of demographics?
+-   Mouse over the circles to consider the percentage of student enrollments in each demographic combination. Is there a combination of demographics that are disproportionately represented in a course? Does that surprise you? Alternatively, does it surprise you that not all students are in that combination of demographics?
 
 -   While avoiding blaming students for their socioeconomic situation, what kinds of background and current conditions may underlie the patterns seen here? Are there pedagogical strategies that could be used to close these differences.
 :::
@@ -518,7 +473,7 @@ metThresholds %>%
   paste0(collapse = "\n\n")-> droppedCols
 
 #Print names of removed columns
-if (droppedCols != "") cat("\nThe following are not shown because they did not meet minimum threshold of students for all categories:\n\n",droppedCols,'\n', sep="")
+if (droppedCols != "") cat("\nThe following are not shown because they did not meet minimum threshold of student enrollments for all categories:\n\n",droppedCols,'\n', sep="")
 
 # Loops through all possible pairs of columns that have passed the privacy check
 for (i in levels(combosToPlot$demograph12) ) {
@@ -538,12 +493,13 @@ for (i in levels(combosToPlot$demograph12) ) {
     pivot_longer(cols = c(demograph1, demograph2)) %>%
     pull(value) -> pair
 
-#DFW
+#DFW or Success
 dt %>%
     {if(censor_by_removal == FALSE) right_join(.,courseList, by = c("course")) else .} %>% #only keep the courses that met thresholds for this demographic
     filter(if_else( hide_NA & ( is.na(!!sym(pair[1])) | !!sym(pair[1]) %in% c("","NA","NaN") ) & ( is.na(!!sym(pair[2])) | !!sym(pair[2]) %in% c("","NA","NaN") ),FALSE,TRUE) ) %>% #filter out NA values or equivalent
     group_by(course,!!sym(pair[1]),!!sym(pair[2])) %>%
-    summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(ABCDFW == "DFW")/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(ABCDFW == "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW == "DFW")," of ",n(),")</span>")),  .groups = "drop" ) %>%
+  {if (show_GPA_excluding_DF) mutate(.,to_sum = ABCDFW != "DFW") else mutate(.,to_sum = ABCDFW == "DFW") } %>% #Success or DFW
+  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(to_sum)/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(to_sum)/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(to_sum)," of ",n(),")</span>")), .groups = "drop" ) %>%
     group_by(course) %>%
     mutate(Gap = max(DFW_rate) - min(DFW_rate)) %>% # Calculates the gap percentage
     mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank
@@ -571,6 +527,7 @@ dt %>%
 dt %>%
   {if(censor_by_removal == FALSE) right_join(.,courseList, by = c("course")) else .} %>% #only keep the courses that met thresholds for this demographic
   filter(if_else( hide_NA & ( is.na(!!sym(pair[1])) | !!sym(pair[1]) %in% c("","NA","NaN") ) & ( is.na(!!sym(pair[2])) | !!sym(pair[2]) %in% c("","NA","NaN") ),FALSE,TRUE) ) %>% #filter out NA values or equivalent
+  mutate(course = fct_rev(course)) %>% #reverse courses so that they match the order of the table
   group_by(course, !!sym(pair[1]), !!sym(pair[2])) %>%
   filter(if_else( censor_by_removal & n() < threshold,FALSE,TRUE)) %>% #filter out censor_by_removal categories
   summarize(DFW = sum(ABCDFW == "DFW")/n(), students=n(), DFW_students=sum(ABCDFW == "DFW"), .groups = "drop" ) %>%
@@ -581,17 +538,34 @@ dt %>%
   mutate(students_in_gap = students*(DFW-min(DFW))) %>%
   mutate(students_in_gap = sum(students_in_gap, na.rm=TRUE), diversity = students/sum(students), total_enrollment = sum(students) ) -> b4maxCheck
 
-# Sets scale of x-axis to 50% or highest Max + 10%
-if (max(b4maxCheck$DFW_max, na.rm=TRUE) > 0.5) {
-  upperLimit <- max(b4maxCheck$DFW_max, na.rm=TRUE) + 0.1 
-  } else { 
-  upperLimit <- 0.5 
-  }
+if (show_GPA_excluding_DF == FALSE){
+  lowerLimit <- 0;
+  # Sets scale of x-axis to 50% or highest Max + 10%
+  if (max(b4maxCheck$DFW_max, na.rm=TRUE) > 0.5) {
+    upperLimit <- max(b4maxCheck$DFW_max, na.rm=TRUE) + 0.1} else {
+      upperLimit <- 0.5};
+  unit_text = "DFW";
+  title_text = "DFW Rates"
+} else {
+  # Sets scale of x-axis to 50% or lowest Min - 10%
+  if (min(1-b4maxCheck$DFW_max, na.rm=TRUE) < 0.5) {
+    
+    lowerLimit <- min(1-b4maxCheck$DFW_max, na.rm=TRUE) - 0.1} else {
+      lowerLimit <- 0.5};
+  upperLimit <- 1;
+  unit_text = "Success";
+  title_text = "Success Rates (1-DFW)"
+}
 
 b4maxCheck %>%
-  arrange(desc(students)) %>%
-  mutate(intersection = fct_reorder(intersection, DFW, .desc=TRUE)) %>%
-  ggplot(aes(x = DFW, y = course, size = students, fill = intersection)) + #Plotting code starts here
+  rowwise() %>% #needed to force the calculation of size_variable at the row_level
+  mutate(size_variable = if_else(area_is_total==TRUE,students,DFW_students)) %>%
+  ungroup() %>%
+  mutate(intersection = fct_reorder(intersection, DFW, .desc=TRUE)) %>% #orders legend on DFW rates
+  group_by(course) %>%
+  arrange(desc(size_variable)) %>% #orders circles so biggest in the back for each course
+  {if (show_GPA_excluding_DF) mutate(.,DFW = 1-DFW, DFW_min_temp = DFW_min, DFW_min = 1- DFW_max, DFW_max = 1 - DFW_min_temp ) else .} %>% #if success, swap data
+  ggplot(aes(x = DFW, y = course, size = size_variable, fill = intersection)) + #Plotting code starts here
   theme_classic() +
   theme(axis.text = element_text_interactive(size = 12) ) +
   geom_segment_interactive(aes(x = DFW_min, xend = DFW_max, yend=course, tooltip = paste(
@@ -600,21 +574,21 @@ b4maxCheck %>%
     "Grade Ratio:",round(DFW_max/DFW_min, digits = 2),"\r",
     "Students in Gap:",round(students_in_gap, digits = 1),"\r",
     "Total Enrollments:",total_enrollment,"\r"
-    )), colour = "gray", linewidth = 15) +
-  scale_size(range = c(5,15), guide = "none") +
-  geom_point_interactive(aes(size = students, tooltip = paste0(
+    ), data_id = course), colour = "gray", linewidth = 15) +
+    scale_size_area(max_size= 15, breaks = NULL, guide = "none") + 
+  geom_point_interactive(aes(size = size_variable, tooltip = paste0(
     course,"\r",
-    intersection," (",percent(diversity,accuracy = 0.1)," of students)\r",
-    DFW_students," of ",students," enrollments\r",
-    percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
-  scale_x_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
+    intersection," (",percent(diversity,accuracy = 0.1)," of enrollments))\r",
+    percent(DFW, accuracy = 0.1)," ",unit_text," (",DFW_students," of ",students," enrollments)"),
+    data_id = intersection:course) , shape = 21) +
+  scale_x_continuous(labels = scales::percent, limits = c(lowerLimit,upperLimit)) +
   guides(fill = guide_legend(override.aes = list(size = 5), title="")) +
-    labs(y = "")-> plot
+    labs(y = "", x = unit_text, title = title_text)-> plot
   
   #Creates title in Markdown format
   cat('\n##', i , '\n')
   #prints interactive visualization
-  print(htmltools::tagList(girafe(ggobj = plot)))
+  print(htmltools::tagList(girafe(ggobj = plot, options=list(opts_hover(girafe_css(css="", point = "stroke-width:2", line = "stroke:DarkGray"))) )))
   #prints table
   print(htmltools::tagList(table))
 }
@@ -684,7 +658,9 @@ dt %>%
   filter(if_else( hide_NA & ( is.na(!!sym(i)) | !!sym(i) %in% c("","NA","NaN") ),FALSE,TRUE) ) %>% #filter out NA values or equivalent
   mutate(!!sym(i) := if_else( censor_by_removal==FALSE & met == FALSE,"Aggregated",!!sym(i))) %>%
   group_by(term,!!sym(i)) %>%
-  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(ABCDFW == "DFW")/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(ABCDFW == "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW == "DFW")," of ",n(),")</span>")),  .groups = "drop" ) %>%
+  {if (show_GPA_excluding_DF) mutate(.,to_sum = ABCDFW != "DFW") else mutate(.,to_sum = ABCDFW == "DFW") } %>% #Success or DFW
+  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(to_sum)/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(to_sum)/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(to_sum)," of ",n(),")</span>")), .groups = "drop" ) %>%    
+#  summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(ABCDFW == "DFW")/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(ABCDFW == "DFW")/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(ABCDFW == "DFW")," of ",n(),")</span>")),  .groups = "drop" ) %>%
   group_by(term) %>%    
   mutate(Gap = max(DFW_rate,na.rm=TRUE) - min(DFW_rate,na.rm=TRUE) ) %>%
   mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank
@@ -723,42 +699,60 @@ dt %>%
   mutate(students_in_gap = students*(DFW-min(DFW))) %>%
   mutate(students_in_gap = sum(students_in_gap, na.rm=TRUE), diversity = students/sum(students), total_enrollment = sum(students) ) -> b4maxCheck
 
-# Sets scale of x-axis to 50% or highest Max + 10%
-if (max(b4maxCheck$DFW_max, na.rm=TRUE) > 0.5) {
-  upperLimit <- max(b4maxCheck$DFW_max, na.rm=TRUE) + 0.1}
-else {
-    upperLimit <- 0.5}
+if (show_GPA_excluding_DF == FALSE){
+  lowerLimit <- 0;
+  # Sets scale of x-axis to 50% or highest Max + 10%
+  if (max(b4maxCheck$DFW_max, na.rm=TRUE) > 0.5) {
+    upperLimit <- max(b4maxCheck$DFW_max, na.rm=TRUE) + 0.1} else {
+      upperLimit <- 0.5};
+  unit_text = "DFW";
+  title_text = "DFW Rates"
+} else {
+  # Sets scale of x-axis to 50% or lowest Min - 10%
+  if (min(1-b4maxCheck$DFW_max, na.rm=TRUE) < 0.5) {
+    
+    lowerLimit <- min(1-b4maxCheck$DFW_max, na.rm=TRUE) - 0.1} else {
+      lowerLimit <- 0.5};
+  upperLimit <- 1;
+  unit_text = "Success";
+  title_text = "Success Rates (1-DFW)"
+}
 
+#DFW or Success
 b4maxCheck %>%
-  arrange(desc(students)) %>%
-  mutate(cat_factors = fct_reorder(!!sym(i), DFW, .desc=TRUE)) %>%
+  rowwise() %>% #needed to force the calculation of size_variable at the row_level
+  mutate(size_variable = if_else(area_is_total==TRUE,students,DFW_students)) %>%
+  ungroup() %>%
+  mutate(cat_factors = fct_reorder(!!sym(i), DFW, .desc=TRUE)) %>% #orders legend on DFW rates
+  group_by(term) %>%
+  arrange(desc(size_variable)) %>% #orders circles so biggest in the back for each term
+  {if (show_GPA_excluding_DF) mutate(.,DFW = 1-DFW, DFW_min_temp = DFW_min, DFW_min = 1- DFW_max, DFW_max = 1 - DFW_min_temp ) else .} %>% #if success, swap data
   ggplot(aes(x = term, y = DFW, fill = cat_factors)) + 
   theme_classic() +
   theme(axis.text = element_text_interactive(size = 12) ) +
   geom_segment_interactive(aes(y = DFW_min, yend = DFW_max, xend=term, tooltip = paste(
     term,"\r",
-    !!sym(i),"\r",
     "Percentage Points Gap:",percent(DFW_max - DFW_min, accuracy = 0.1),"\r",
     "Grade Ratio:",round(DFW_max/DFW_min, digits = 2),"\r",
     "Students in Gap:",round(students_in_gap, digits = 1),"\r",
     "Total Enrollments:",total_enrollment,"\r"
-    )), colour = "gray", linewidth = 15) +
-  scale_size(range = c(5,15), guide = "none") +
-  geom_point_interactive(aes(size = students, tooltip = paste0(
+    ), data_id = term), colour = "gray", linewidth = 15) +
+    scale_size_area(max_size= 15, breaks = NULL, guide = "none") +
+  geom_point_interactive(aes(size = size_variable, tooltip = paste0(
     term,"\r",
-    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of students)\r",
-    DFW_students," of ",students," enrollments\r",
-    percent(DFW, accuracy = 0.1)," DFW" )) , shape = 21) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,upperLimit)) +
+    !!sym(i)," (",percent(diversity,accuracy = 0.1)," of enrollments))\r",
+    percent(DFW, accuracy = 0.1)," ",unit_text," (",DFW_students," of ",students," enrollments)"),
+    data_id = cat_factors:term) , shape = 21) +
+  scale_y_continuous(labels = scales::percent, limits = c(lowerLimit,upperLimit)) +
   guides(fill = guide_legend(override.aes = list(size = 10), title="")) + #include title above legend with title = i
   theme(axis.text.x=element_text(angle = 90, hjust = 0)) +
   xlab("Time") +
-  labs(fill = sym(i)) -> plot
+  labs(fill = sym(i),y = unit_text, title = title_text) -> plot
 
 # Header created in markdown
 cat('\n###', j ,":", i, '\n')
 
-print(htmltools::tagList(girafe(ggobj = plot))) # Use htmltools::tagList() to generate multiple interactive plots # results = 'asis' must go in {}
+print(htmltools::tagList(girafe(ggobj = plot, options=list(opts_hover(girafe_css(css="", point = "stroke-width:2", line = "stroke:DarkGray"))) ))) # Use htmltools::tagList() to generate multiple interactive plots # results = 'asis' must go in {}
                                                 
 print(htmltools::tagList(table))
 
@@ -795,7 +789,7 @@ Free online courses that aim to guide instructors in mindset and attitude.
 
 # Notes
 
-`r if(censor_by_removal == FALSE) "A demographic column must meet the minimum threshold for number of students in all categories in order to be displayed. If a column does not meet the minimum threshold, and you anticipate that it should, check your data for typos which could be inadvertently creating another category in that column."`
+`r if(censor_by_removal == FALSE) "A demographic column must meet the minimum threshold for number of student enrollments in all categories in order to be displayed. If a column does not meet the minimum threshold, and you anticipate that it should, check your data for typos which could be inadvertently creating another category in that column."`
 
 In order to meet thresholds for race-ethnicity in small-enrollment courses, you can combine categories to overcome threshold minimums, for example combining categories into underrepresented. When doing so, be intentional and clear.
 
