@@ -26,6 +26,7 @@ The expectation is that most users will simply manipulate their data file to ach
 The code is designed to be robust to variation in the data file; it wil accomodate variation in capitlization and naming conventions. As well, it will accomodate a series of semester naming conventions. A few options can be be adjusted to change how the report processes the data and displays the output. This are located at the bottom of the first chunk of code in Grades_by_Demographics.Rmd.
 
 **Options** can be adjusted in the code for this report that do the following:
+-  Scale the area of points by the total number of students or the number of DFW students. In the code, this is called "area_is_total".
 -  Adjust the minimum threshold for required for a demographic factor to be shown. In the code, this is called "threshold".
 -  When a threshold is not met either aggregate the whole demographic factor or just remove the single category which did not meet the threshold. Removing the single category allows other demographic values to be shown, but makes it less obvious that some demographic categories are being hidden from view. In the code, this is called "censor_by_removal".
 -  Hide or show NA values. This will remove stray NA values broadly defined, but if empty cells represent a meaningfull demographic category, you can turn this off. In the code this is called "hide_NA".
