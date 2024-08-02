@@ -22,8 +22,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 ```{r Data and Options, include=FALSE, message = FALSE}
-### MODIFY THIS LINE, REPLACING "data_sim.csv" WITH THE NAME OF YOUR DATA ###
-# Have data file be in the same folder as this R Markdown file.
+# Have data file in the same folder as this R Markdown file.
 
 ds <- read_csv("data_grade_demographics.csv")
 
@@ -252,7 +251,7 @@ dt %>%
   {if (show_GPA_excluding_DF) mutate(.,to_sum = ABCDFW != "DFW") else mutate(.,to_sum = ABCDFW == "DFW") } %>% #Success or DFW
   summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(to_sum)/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(to_sum)/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(to_sum)," of ",n(),")</span>")), .groups = "drop" ) %>%
   group_by(course) %>%
-  mutate(Gap = max(DFW_rate) - min(DFW_rate)) %>%
+  mutate(Gap = max(DFW_rate, na.rm=TRUE) - min(DFW_rate, na.rm=TRUE)) %>%
   mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank  
   select(-DFW_rate) %>%
   pivot_wider(names_from = !!i, values_from=DFW) %>%
@@ -501,8 +500,8 @@ dt %>%
   {if (show_GPA_excluding_DF) mutate(.,to_sum = ABCDFW != "DFW") else mutate(.,to_sum = ABCDFW == "DFW") } %>% #Success or DFW
   summarize(DFW_rate = if_else( censor_by_removal & n() < threshold,NA,sum(to_sum)/n()), DFW = if_else( censor_by_removal & n() < threshold, "Below Threshold", paste0(percent(sum(to_sum)/n(),accuracy=0.1),"<br><span style='white-space: nowrap;'>(",sum(to_sum)," of ",n(),")</span>")), .groups = "drop" ) %>%
     group_by(course) %>%
-    mutate(Gap = max(DFW_rate) - min(DFW_rate)) %>% # Calculates the gap percentage
-    mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically becuase no only a single value) with NA, which will be blank
+    mutate(Gap = max(DFW_rate, na.rm=TRUE) - min(DFW_rate, na.rm=TRUE)) %>% # Calculates the gap percentage
+    mutate(Gap = if_else(is.infinite(Gap) | Gap == 0,NA,Gap)) %>% #replace infinite values or zero values (typically because only a single value) with NA, which will be blank
     select(-DFW_rate) %>%
     pivot_wider(names_from = c(!!pair[1],!!pair[2]), values_from=c(DFW)) %>%
     relocate(Gap, .after = "course") %>%
