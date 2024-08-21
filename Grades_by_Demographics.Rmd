@@ -17,6 +17,7 @@ if (!require("tidyverse")) install.packages("tidyverse")
 if (!require("gt")) install.packages("gt")
 if (!require("ggiraph")) install.packages("ggiraph")
 if (!require("scales")) install.packages("scales")
+if (!require("rstudioapi")) install.packages("rstudioapi")
 #Ensure working directory is the same as this file
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
