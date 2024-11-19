@@ -369,7 +369,7 @@ if (min(b4maxCheck$GPA_exclude_DFW_min, na.rm=TRUE) < 3.0) {
     lowerLimit <- 3.0}
 
 # Sets scale of x-axis to 3.5 or highest GPA + 0.1
-if (max(b4maxCheck$GPA_exclude_DFW_min, na.rm=TRUE) > 3.5) {
+if (max(b4maxCheck$GPA_exclude_DFW, na.rm=TRUE) > 3.5) {
   upperLimit <- max(b4maxCheck$GPA_exclude_DFW, na.rm=TRUE) + 0.1} else {
     upperLimit <- 3.5}
 
