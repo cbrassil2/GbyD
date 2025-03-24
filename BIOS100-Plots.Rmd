@@ -1,0 +1,227 @@
+---
+title: "BIOS100-Plots"
+author: "Chad Brassil"
+date: "Spring 2025"
+output: 
+  html_document:
+    df_print: tibble
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+if (!require("tidyverse")) install.packages("tidyverse"); library("tidyverse") #install and load tidyverse
+if (!require("neonUtilities")) install.packages("neonUtilities"); library("neonUtilities") #used to download NEON data
+```
+
+We are going to consider three ways to view data. The first is a time series, which we built step-by-step in the previous class period.
+
+# Time Series
+
+A time series plots a biological variable against time. In this case, we summed data by year, calculating the fraction per year.
+
+```{r}
+datalist <- readRDS(file="NEONdatalist") #load local data
+
+datalist$mos_pathogenresults |>
+  filter(testResult != "Inconclusive") |>
+  mutate(yearCollect = year(startCollectDate)) |>
+  filter(yearCollect >= 2016) |>
+  group_by(yearCollect) |>
+  summarize(positive = sum(testResult == "Positive"), all = n(), rate = positive/all ) |>
+  ggplot(aes(x = yearCollect, y = rate)) +
+  theme_classic()+
+  geom_point(shape = 1, size = 5) + 
+  ylim(0,NA) +
+  xlab("Year") + 
+  ylab("Fraction Positive for Disease")
+```
+
+# Bar Plot
+
+Use a bar plot to examine the relationship between a continuous variable and a discrete, or categorical, variable. In this case, the continuous variable will be the number of fish and the discrete variable will be the species of fish. We will look at the distribution of fish at the Prairie Pothole site in North Dakota.
+
+After using the Data Explorer, I have customized the dpID and site in the next line. 
+
+```{r}
+#datalist_fish = loadByProduct(dpID="DP1.20107.001", site="PRPO", tabl = "fsh_bulkCount",check.size = F) #would use this to download from NEON
+#saveRDS(datalist_fish,file="NEONdatalist_fish") #would use this to save it to my drive
+datalist_fish <- readRDS(file="NEONdatalist_fish") #using this load pre-saved data. Doing this in class so we don't overwhelm the server
+```
+
+
+I am going to limit the data to a single year, in this case 2106. Fish are counted at multiple locations along a stream. I am going to sum the number fish across the locations.
+
+
+```{r}
+datalist_fish$fsh_bulkCount |>
+  select(namedLocation, passStartTime, passNumber, taxonID, scientificName, bulkFishCount ) |> #reduce to relevant fields
+  filter(year(passStartTime) == 2016) #filter to a single year. I picked a year with lots of fish
+```
+
+The most numerous species in this data is Pimephales promelas. I looked up that species in Google and the common name of Pimephales promelas is Fathead minnow. So we are looking at a data set of small fish: minnows, darters, and sticklebacks.
+
+```{r}
+datalist_fish$fsh_bulkCount |>
+  select(namedLocation, passStartTime, passNumber, eventID, taxonID, scientificName, bulkFishCount ) |> #relevant fields
+  filter(year(passStartTime) == 2016) |> #limit to a single year
+  group_by(scientificName) |> #count per species
+  summarize(count = sum(bulkFishCount)) |> #add up the numbers
+  ggplot(aes(x=scientificName, y=count)) + #choose what to plot
+    geom_bar(stat="identity") + #make a bar plot
+    theme_classic() + #remove gridlines
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) #rotate x-axis labels 90 degree. This must be placed after theme_classic()
+```
+
+Note that the above chunk includes code that rotates the x-axis labels 90 degrees.
+
+# Scatter Plot
+
+A scatter plot can be used to look at the relationship between two continuous variables. The time series above was a form of a scatter plot. In this case, we'll examine the relationship between two variables, neither of which is time. 
+
+In each of the previous examples, all the data we needed was in a single data table. In this example, we are going to pull data from two different data sets, or Product IDs, but which were collected at common plots. We are going to look for the relationship between these two sets of data in a scatter plot because both of the variables will be continuous.
+
+The [Rocky Mountain National Park](https://www.neonscience.org/field-sites/rmnp) NEON site is terrestrial site the contains a number of plots in which plant diversity is recorded. The site codes is RMNP.  
+
+Part way down the above webpage is a map of the plots at RMNP. I can zoom in on this location and see a set of purple square with pictures of leaves. Those represent the plots from which plant data is collected.
+
+Reading through the [Explor Data for RMNP](https://data.neonscience.org/data-products/explore?site=RMNP), I find "Plant presence and percent cover". This will have the data we want on plant diversity.
+
+In this case, I am going to rename the datalist because we are going to pull data from two different Product IDs. The first set of data is "Plant presence and percent cover".
+
+```{r}
+#datalist_PlantPresence = loadByProduct(dpID="DP1.10058.001", site="RMNP", tabl="div_1m2Data", check.size = F)
+#saveRDS(datalist_PlantPresence,file="NEONdatalist_PlantPresence")
+datalist_PlantPresence <- readRDS(file="NEONdatalist_PlantPresence")
+```
+
+```{r}
+names(datalist_PlantPresence)
+```
+
+Reading the description we learn that Plant Presence and Percent Cover data is collected at the scale of subplots within 400 square meter plots. We are going to use that variation among plots as the scale for our question. Looking through the description and the data, I determine that div_1m2Data has what we are looking for.
+
+```{r}
+datalist_PlantPresence$div_1m2Data
+```
+
+
+
+Notice that divDataType has two options, otherVariables and plantSpecies. 
+
+```{r}
+datalist_PlantPresence$div_1m2Data |>
+  select(endDate, divDataType, taxonID, otherVariables, percentCover)
+```
+
+We want to count the number of plant species, so I will filter for divDataType == "plantSpecies". I will also limit it to a single year, in this case 2022.
+
+
+```{r}
+datalist_PlantPresence$div_1m2Data |>
+  filter(divDataType == "plantSpecies", year(endDate) == 2022) |> #limit to plants, not lichens, rocks etc and just 2022
+  select(plotID, taxonID)
+```
+
+## arrange()
+
+As I looked at this data, I noticed that the data include subplots, and if a plant was identified in different subplots, it will be listed multiple times in the same plot. I'll illustrate this using arrange() so that, in this case, the data is lined up by plotID and then taxonID.
+
+```{r}
+datalist_PlantPresence$div_1m2Data |>
+  filter(divDataType == "plantSpecies", year(endDate) == 2022) |> #limit to plants, not lichens, rocks etc and just 2022
+  select(plotID, taxonID) |>
+  arrange(plotID, taxonID)
+```
+
+Notice how JAAM is listed multiple times in teh same plot. That is because it was observed in multiple subplots where the data were counted.
+
+## distinct()
+
+If multiple rows exist in the data that are identical, the distinct() function reduces the repeated copies down to a single row.
+
+```{r}
+datalist_PlantPresence$div_1m2Data |>
+  filter(divDataType == "plantSpecies", year(endDate) == 2022) |> #limit to plants, not lichens, rocks etc and just 2022
+  select(plotID, taxonID) |>
+  distinct() |>
+  arrange(plotID, taxonID)
+```
+Now each taxon is list at most one time within a plot. I can contine building my code with distinct(). However, I am going to remove arrange() because I only added that so that I could examine the table by hand.
+
+In the next chunk of code, find the diversity of plants in each plot (specifically the species richness because we are going to count species).
+
+```{r}
+datalist_PlantPresence$div_1m2Data |>
+  filter(divDataType == "plantSpecies", year(endDate) == 2022) |> #limit to plants, not lichens, rocks etc and just 2022
+  select(plotID, taxonID) |>
+  distinct() |>
+  group_by(plotID) |>
+  summarise(plant_richness = n()) -> PlantDiversity
+
+PlantDiversity
+```
+
+Using the same process, I found bird survey data that was collected as some of these same locations with the Rocky Mountain National Park site.
+
+```{r}
+#datalist_BreedingLandbird = loadByProduct(dpID="DP1.10003.001", site="RMNP",  tabl="brd_countdata", check.size = F)
+#saveRDS(datalist_BreedingLandbird,file="NEONdatalist_BreedingLandbird")
+datalist_BreedingLandbird <- readRDS(file="NEONdatalist_BreedingLandbird")
+```
+
+```{r}
+names(datalist_BreedingLandbird)
+```
+
+```{r}
+datalist_BreedingLandbird$brd_countdata |>
+  filter(targetTaxaPresent == "Y") |> #only keep those rows in which a bird was observed
+  filter(year(startDate) == 2022) |>
+  select(plotID, taxonID) |>
+  distinct() |> #multiple lines can exist if observed in different observation points within the plot or each pointCountMinute at that point. 
+  group_by(plotID) |>
+  count() |>
+  rename(bird_richness = n) -> BirdDiversity
+
+BirdDiversity
+```
+
+## left_join()
+
+The function left_join() is used to join the second data set to the first. It keeps all of the rows from the first data set, in this case Plant Diversity. It looks for any rows in the second data set with the same values for the field listed in "join_by", in this case plotID. If a plotID is missing from the second data set, the entry will be listed as NA.
+
+```{r}
+PlantDiversity |>
+  left_join(BirdDiversity, join_by(plotID)) #join those with the same plotID
+```
+
+## is.na()
+
+We can't plot NA because it is meaningless. Therefore, we'll remove the rows with an NA in bird_richness. The function is.na() returns TRUE if the values is NA. However we want to keep those values where it is the opposite, not NA. The exclamation point 
+
+```{r}
+PlantDiversity |>
+  left_join(BirdDiversity, join_by(plotID)) |> #join those with the same plotID
+  filter(!is.na(bird_richness)) #remove those with NA in bird_richness
+```
+
+
+```{r}
+PlantDiversity |>
+  left_join(BirdDiversity, join_by(plotID)) |> #join those with the same plotID
+  filter(!is.na(bird_richness)) |> #remove those with NA in bird_richness
+  ggplot(aes(x = plant_richness, y = bird_richness)) +
+    geom_point(shape = 1, size = 3) +
+    theme_classic() +
+    xlab ("Plant Species Richness") +
+    ylab ("Bird Species Richness")
+```
+
+# Homework
+
+1) Add a figure to "BIOS100-Project.RMD", which you started in the Workspace in Posit. Upload the report with the figure to the Assignment "Project - Figure".
+
+2) Complete "Project - Debug", which is a reflection question on any struggles you are having in creating the figure. 
